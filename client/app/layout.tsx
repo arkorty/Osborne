@@ -1,24 +1,5 @@
-import type { Metadata } from "next";
-import localFont from "next/font/local";
-import { Bitcount_Grid_Single } from "next/font/google";
 import "./globals.css";
-
-const bitcountGridSingle = Bitcount_Grid_Single({
-  weight: "400",
-  variable: "--font-bitcount-grid",
-  subsets: ["latin"],
-});
-
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
-});
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
-});
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Osborne",
@@ -48,10 +29,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} ${bitcountGridSingle.variable} antialiased`}
-        suppressHydrationWarning
-      >
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Bitcount+Grid+Single:wght@400&display=swap"
+        />
+      </head>
+      <body className="antialiased" suppressHydrationWarning>
         {children}
       </body>
     </html>

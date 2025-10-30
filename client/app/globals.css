@@ -2,10 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=Bitcount_Grid_Single&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap");
 
 @layer base {
   :root {
+    --font-bitcount-grid: "Bitcount Grid Single", monospace;
     --background: rgb(251, 241, 199);
     --foreground: rgb(60, 56, 54);
     --card: rgb(235, 219, 178);
@@ -79,10 +80,13 @@
 
 @layer base {
   body {
-    font-family: var(--font-roboto), sans-serif;
+    font-family: var(--font-bitcount-grid);
+  }
+  .editor-font {
+    font-family: "JetBrains Mono", monospace;
   }
   textarea {
-    font-family: var(--font-jetbrains-mono), monospace;
+    font-family: "JetBrains Mono", monospace;
   }
 }
 
@@ -188,7 +192,7 @@
   }
   
   .ui-font {
-    font-family: var(--font-bitcount-grid, "Bitcount Grid Single", monospace);
+    font-family: var(--font-bitcount-grid);
     font-size: 1.1rem;
   }
   
@@ -196,7 +200,7 @@
     background-color: var(--card);
     color: var(--card-foreground);
     border-color: var(--border);
-    font-family: var(--font-bitcount-grid, "Bitcount Grid Single", monospace);
+    font-family: var(--font-bitcount-grid);
     font-size: 1.2rem;
     font-weight: 500;
   }
