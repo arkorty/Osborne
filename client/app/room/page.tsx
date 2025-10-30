@@ -36,8 +36,8 @@ import { JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { LegalFooter } from "@/components/Footer";
 import { ContentWarningModal } from "@/components/ContentWarningModal";
-import { DMCAModalComponent } from "@/components/DMCAModalComponent";
-import { DisclaimerModalComponent } from "@/components/DisclaimerModalComponent";
+import { DMCAModalComponent } from "@/components/DMCAModal";
+import { DisclaimerModalComponent } from "@/components/DisclaimerModal";
 
 dotenv.config();
 
