@@ -109,7 +109,7 @@ export const CommentsPanel: React.FC<CommentsPageProps> = ({
 
   return (
     <div 
-      className={`fixed right-0 top-0 h-full w-80 bg-card border-l border-border shadow-lg z-40 flex flex-col transition-transform duration-300 ease-in-out ${
+      className={`fixed right-0 top-0 h-full w-full md:w-80 bg-card border-l border-border shadow-lg z-40 flex flex-col transition-transform duration-300 ease-in-out ${
         isVisible ? 'transform-none' : 'translate-x-full'
       }`}
     >

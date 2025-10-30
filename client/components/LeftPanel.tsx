@@ -113,6 +113,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
 
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
   const [modalFile, setModalFile] = useState<MediaFile | null>(null);
+  const [audioProgress, setAudioProgress] = useState<{ [key: string]: { currentTime: number; duration: number } }>({});
   const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({});
 
   // Helper function to get the correct file URL using HTTP server
@@ -202,14 +203,49 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
       setPlayingAudio(null);
     } else {
       if (!audioRefs.current[fileId]) {
-        audioRefs.current[fileId] = new Audio(url);
-        audioRefs.current[fileId].addEventListener('ended', () => {
+        const audio = new Audio(url);
+        audioRefs.current[fileId] = audio;
+        
+        // Add event listeners for progress tracking
+        audio.addEventListener('loadedmetadata', () => {
+          setAudioProgress(prev => ({
+            ...prev,
+            [fileId]: { currentTime: 0, duration: audio.duration }
+          }));
+        });
+        
+        audio.addEventListener('timeupdate', () => {
+          setAudioProgress(prev => ({
+            ...prev,
+            [fileId]: { currentTime: audio.currentTime, duration: audio.duration }
+          }));
+        });
+        
+        audio.addEventListener('ended', () => {
           setPlayingAudio(null);
+          setAudioProgress(prev => ({
+            ...prev,
+            [fileId]: { currentTime: 0, duration: audio.duration }
+          }));
         });
       }
       audioRefs.current[fileId].play();
       setPlayingAudio(fileId);
     }
+  };
+
+  const handleSeekAudio = (fileId: string, seekTime: number) => {
+    const audio = audioRefs.current[fileId];
+    if (audio) {
+      audio.currentTime = seekTime;
+    }
+  };
+
+  const formatAudioTime = (seconds: number) => {
+    if (isNaN(seconds)) return '0:00';
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
   const handleDeleteFile = (fileId: string) => {
@@ -240,7 +276,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
 
   return (
     <div 
-      className={`fixed left-0 top-0 h-full w-80 bg-card border-r border-border shadow-lg z-40 flex flex-col transition-transform duration-300 ease-in-out ui-font ${
+      className={`fixed left-0 top-0 h-full w-full md:w-80 bg-card border-r border-border shadow-lg z-40 flex flex-col transition-transform duration-300 ease-in-out ui-font ${
         isVisible ? 'transform-none' : '-translate-x-full'
       }`}
     >
@@ -423,21 +459,52 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                   )}
 
                   {file.type.startsWith('audio/') && (
-                    <div className="mt-2 flex items-center space-x-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 w-8 p-0"
-                        onClick={() => handlePlayAudio(file.id, getFileUrl(file))}
-                      >
-                        {playingAudio === file.id ? (
-                          <Pause size={12} />
-                        ) : (
-                          <Play size={12} />
-                        )}
-                      </Button>
-                      <div className="flex-1 h-2 bg-muted rounded-full">
-                        <div className="h-2 bg-primary rounded-full w-0"></div>
+                    <div className="mt-2 space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => handlePlayAudio(file.id, getFileUrl(file))}
+                        >
+                          {playingAudio === file.id ? (
+                            <Pause size={12} />
+                          ) : (
+                            <Play size={12} />
+                          )}
+                        </Button>
+                        <div className="flex-1 flex flex-col space-y-1">
+                          <div 
+                            className="h-2 bg-muted rounded-full cursor-pointer hover:bg-muted/80 transition-colors relative"
+                            onClick={(e) => {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const clickX = e.clientX - rect.left;
+                              const width = rect.width;
+                              const progress = audioProgress[file.id];
+                              if (progress) {
+                                const seekTime = (clickX / width) * progress.duration;
+                                handleSeekAudio(file.id, seekTime);
+                              }
+                            }}
+                          >
+                            <div 
+                              className="h-2 bg-green-500 dark:bg-green-600 rounded-full transition-all duration-100"
+                              style={{
+                                width: audioProgress[file.id] 
+                                  ? `${(audioProgress[file.id].currentTime / audioProgress[file.id].duration) * 100}%`
+                                  : '0%'
+                              }}
+                            />
+                          </div>
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>
+                              {audioProgress[file.id] ? formatAudioTime(audioProgress[file.id].currentTime) : '0:00'}
+                            </span>
+                            <span>
+                              {audioProgress[file.id] ? formatAudioTime(audioProgress[file.id].duration) : '0:00'}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}

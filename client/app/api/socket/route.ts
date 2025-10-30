@@ -1,38 +1,17 @@
-import { NextRequest } from "next/server";
-import { WebSocketServer } from "ws";
-
-interface ExtendedNextRequest extends NextRequest {
-  socket: {
-    server: {
-      wss?: WebSocketServer;
-    };
-    on: (event: string, listener: (...args: any[]) => void) => void;
-  };
-}
-
-export async function GET(req: ExtendedNextRequest) {
-  const { socket } = req;
-
-  if (!socket?.server?.wss) {
-    const wss = new WebSocketServer({ noServer: true });
-    socket.server.wss = wss;
-
-    wss.on("connection", (ws) => {
-      ws.on("message", (message) => {
-        wss.clients.forEach((client) => {
-          if (client.readyState === client.OPEN) {
-            client.send(message.toString());
-          }
-        });
-      });
-    });
-
-    socket.on("upgrade", (request: any, socket: any, head: any) => {
-      wss.handleUpgrade(request, socket, head, (ws) => {
-        wss.emit("connection", ws, request);
-      });
-    });
-  }
-
-  return new Response("WebSocket setup complete");
+export async function GET() {
+  // In App Router, WebSocket connections should be handled differently
+  // This endpoint is mainly for checking WebSocket server availability
+  // The actual WebSocket server is running separately on the Go backend
+  
+  const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8100/o/socket";
+  
+  return new Response(JSON.stringify({
+    message: "WebSocket endpoint available",
+    wsUrl: wsUrl,
+    timestamp: new Date().toISOString()
+  }), {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
 }

@@ -219,7 +219,73 @@ const Room = () => {
   const [windowWidth, setWindowWidth] = useState(0);
   const [leftPanelForced, setLeftPanelForced] = useState(false);
   const [rightPanelForced, setRightPanelForced] = useState(false);
-  const [popupMessage, setPopupMessage] = useState<string | null>(null);
+  const [popupMessage, setPopupMessage] = useState<{text: string; type?: 'default' | 'warning'} | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Detect mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768); // md breakpoint
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Mobile swipe gesture handling
+  useEffect(() => {
+    if (!isMobile) return;
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartTime = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+      touchStartTime = Date.now();
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      const touch = e.changedTouches[0];
+      const touchEndX = touch.clientX;
+      const touchEndY = touch.clientY;
+      const touchEndTime = Date.now();
+
+      const deltaX = touchEndX - touchStartX;
+      const deltaY = touchEndY - touchStartY;
+      const deltaTime = touchEndTime - touchStartTime;
+
+      // Only consider it a swipe if:
+      // 1. The gesture is fast enough (less than 500ms)
+      // 2. The horizontal distance is significant (at least 100px)
+      // 3. The vertical distance is less than horizontal (to avoid conflicting with scrolling)
+      if (
+        deltaTime < 500 && 
+        Math.abs(deltaX) > 100 && 
+        Math.abs(deltaX) > Math.abs(deltaY)
+      ) {
+        if (deltaX < 0 && leftPanelForced) {
+          // Swipe left - close left panel
+          setLeftPanelForced(false);
+        } else if (deltaX > 0 && rightPanelForced) {
+          // Swipe right - close right panel
+          setRightPanelForced(false);
+        }
+      }
+    };
+
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isMobile, leftPanelForced, rightPanelForced]);
 
   const contentRef = useRef(content);
 
@@ -593,10 +659,18 @@ const Room = () => {
   const handleFileUpload = async (files: FileList) => {
     if (!files || files.length === 0 || !currentUser) return;
 
+    const maxFileSize = 10 * 1024 * 1024; // 10MB in bytes
     const httpUrl = process.env.NEXT_PUBLIC_HTTP_URL || "http://localhost:8081";
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
+
+      // Check file size limit
+      if (file.size > maxFileSize) {
+        const fileSizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+        showPopup(`File "${file.name}" (${fileSizeInMB}MB) exceeds 10MB limit`, 'warning');
+        continue; // Skip this file and continue with others
+      }
 
       try {
         // Create form data for file upload
@@ -651,8 +725,8 @@ const Room = () => {
     }
   };
 
-  const showPopup = (message: string) => {
-    setPopupMessage(message);
+  const showPopup = (message: string, type: 'default' | 'warning' = 'default') => {
+    setPopupMessage({text: message, type});
     setTimeout(() => setPopupMessage(null), 2000);
   };
 
@@ -668,8 +742,8 @@ const Room = () => {
       <div 
         className="absolute inset-0 transition-all duration-300"
         style={{
-          left: showLeftPanel ? '320px' : '0px',
-          right: showRightPanel ? '320px' : '0px',
+          left: isMobile ? '0px' : (showLeftPanel ? '320px' : '0px'),
+          right: isMobile ? '0px' : (showRightPanel ? '320px' : '0px'),
         }}
       >
         <div
@@ -762,6 +836,38 @@ const Room = () => {
                   {getThemeById(currentThemeId)?.name || "Switch theme"}
                 </HoverCardContent>
               </HoverCard>
+              
+              {/* Mobile Panel Controls */}
+              {isMobile && (
+                <>
+                  <HoverCard>
+                    <HoverCardTrigger>
+                      <Button
+                        className="bg-chart-1 px-2 py-0 h-5 text-xs rounded-sm hover:bg-chart-1/80 btn-micro"
+                        onClick={() => setLeftPanelForced(!leftPanelForced)}
+                      >
+                        media
+                      </Button>
+                    </HoverCardTrigger>
+                    <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground">
+                      toggle users & media panel
+                    </HoverCardContent>
+                  </HoverCard>
+                  <HoverCard>
+                    <HoverCardTrigger>
+                      <Button
+                        className="bg-chart-3 px-2 py-0 h-5 text-xs rounded-sm hover:bg-chart-3/80 btn-micro"
+                        onClick={() => setRightPanelForced(!rightPanelForced)}
+                      >
+                        notes
+                      </Button>
+                    </HoverCardTrigger>
+                    <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground">
+                      toggle comments panel
+                    </HoverCardContent>
+                  </HoverCard>
+                </>
+              )}
             </div>
           </div>
           <div className="flex-grow flex flex-col p-1 w-full">
@@ -770,15 +876,25 @@ const Room = () => {
                 {error}
               </div>
             )}
-            <CodeEditor
-              ref={editorRef}
-              value={content}
-              onChange={handleContentChange}
-              onSelectionChange={handleSelectionChange}
-              language="plaintext"
-              className="flex-grow w-full"
-              themeConfig={getThemeById(currentThemeId)}
-            />
+            {isMobile ? (
+              <textarea
+                value={content}
+                onChange={(e) => handleContentChange(e.target.value)}
+                className="flex-grow w-full p-3 bg-background text-foreground border border-border rounded resize-none font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                placeholder="Start typing your code here..."
+                style={{ fontFamily: 'JetBrains Mono, Consolas, Monaco, "Courier New", monospace' }}
+              />
+            ) : (
+              <CodeEditor
+                ref={editorRef}
+                value={content}
+                onChange={handleContentChange}
+                onSelectionChange={handleSelectionChange}
+                language="plaintext"
+                className="flex-grow w-full"
+                themeConfig={getThemeById(currentThemeId)}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -801,7 +917,7 @@ const Room = () => {
 
       {/* Comments Panel */}
       <CommentsPanel
-        isVisible={showRightPanel}
+        isVisible={isMobile ? rightPanelForced : showRightPanel}
         onToggle={() => setRightPanelForced(!rightPanelForced)}
         selectedLineStart={selectedLineStart}
         selectedLineEnd={selectedLineEnd}
@@ -814,8 +930,12 @@ const Room = () => {
       {/* Custom Popup */}
       {popupMessage && (
         <div className="fixed top-4 right-4 z-50">
-          <div className="px-3 py-2 bg-popover text-popover-foreground border border-border rounded-lg shadow-lg animate-in fade-in slide-in-from-top-2 duration-200">
-            <span className="text-sm font-medium">{popupMessage}</span>
+          <div className={`px-3 py-2 border rounded-lg shadow-lg animate-in fade-in slide-in-from-top-2 duration-200 ${
+            popupMessage.type === 'warning' 
+              ? 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900 dark:text-yellow-300 dark:border-yellow-700'
+              : 'bg-popover text-popover-foreground border-border'
+          }`}>
+            <span className="text-sm font-medium">{popupMessage.text}</span>
           </div>
         </div>
       )}
@@ -833,7 +953,7 @@ const Room = () => {
 
       {/* Left Panel (Users, Media & ECG) */}
       <LeftPanel
-        isVisible={showLeftPanel}
+        isVisible={isMobile ? leftPanelForced : showLeftPanel}
         users={users}
         mediaFiles={mediaFiles}
         onFileUpload={handleFileUpload}
