@@ -19,8 +19,8 @@ import {
   getThemeFromCookie,
 } from "@/lib/themes";
 import { LegalFooter } from "@/components/Footer";
-import { DMCAModalComponent } from "@/components/DMCAModalComponent";
-import { DisclaimerModalComponent } from "@/components/DisclaimerModalComponent";
+import { DMCAModalComponent } from "@/components/DMCAModal";
+import { DisclaimerModalComponent } from "@/components/DisclaimerModal";
 
 const Home = () => {
   const router = useRouter();
@@ -105,7 +105,7 @@ const Home = () => {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-background dark:bg-background ui-font">
-      <Card className="relative z-10 max-w-md min-w-96 backdrop-blur-sm shadow-lg bg-card/0 bg-opacity-0 dark:bg-card/70 border border-border dark:border-border  p-6 flex flex-col items-center">
+      <Card className="relative z-10 px-12 py-24 backdrop-blur-sm shadow-lg bg-card/0 bg-opacity-0 dark:bg-card/70 border border-border dark:border-border flex flex-col items-center">
         <div className="flex flex-col items-center">
           <h1 className="text-8xl translate-x-1.5 font-bold text-foreground mb-4">
             Osborne

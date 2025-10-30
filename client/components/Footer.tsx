@@ -29,7 +29,7 @@ export const LegalFooter = ({ onDisclaimerOpen, onDMCAOpen }: LegalFooterProps) 
                 color: 'hsl(var(--muted-foreground))'
               }}
             >
-              View Full Legal Terms & Disclaimers
+              Legal Terms & Disclaimers
             </button>
             <button
               onClick={onDMCAOpen}

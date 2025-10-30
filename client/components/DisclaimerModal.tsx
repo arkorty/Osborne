@@ -1,199 +1,159 @@
 "use client";
 
-import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-export const DisclaimerComponent = () => {
-  const [isOpen, setIsOpen] = useState(false);
+interface DisclaimerModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export const DisclaimerModalComponent = ({ isOpen, onClose }: DisclaimerModalProps) => {
+  if (!isOpen) return null;
 
   return (
-    <>
-      {/* Disclaimer Button */}
-      <Button
-        variant="link"
-        size="sm"
-        onClick={() => setIsOpen(true)}
-        className="text-xs underline p-0 h-auto text-muted-foreground"
-      >
-        View Full Legal Terms & Disclaimers
-      </Button>
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 overflow-auto">
+      <Card className="max-w-4xl w-full max-h-[90vh] flex flex-col mx-auto my-auto">
+        <CardHeader className="flex-shrink-0 sticky top-0 bg-card z-10 border-b">
+          <CardTitle className="flex items-center justify-between">
+            Legal Terms & Disclaimers
+            <Button variant="outline" size="sm" onClick={onClose}>
+              ✕
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex-1 overflow-auto scrollbar-hide p-6">
+          <div className="space-y-6 text-sm leading-relaxed">
+            <section>
+              <h3 className="font-semibold text-base mb-3">Terms of Service & User Agreement</h3>
+              <p>
+                By accessing and using this collaborative text editing service (&quot;Osborne&quot;), you acknowledge 
+                that you have read, understood, and agree to be bound by these terms and conditions. 
+                If you do not agree to these terms, please do not use our service.
+              </p>
+            </section>
 
-      {/* Disclaimer Modal */}
-      {isOpen && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-auto">
-          <Card className="max-w-4xl w-full max-h-[90vh] flex flex-col mx-auto my-auto">
-            <CardHeader className="flex-shrink-0 sticky top-0 bg-card z-10 border-b">
-              <CardTitle className="flex items-center justify-between">
-                Legal Terms & Disclaimers
-                <Button variant="outline" size="sm" onClick={() => setIsOpen(false)}>
-                  ✕
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6 text-sm flex-1 overflow-y-auto scrollbar-hide">
-              {/* Terms of Service */}
-              <section>
-                <h3 className="text-lg font-semibold mb-3">Terms of Service</h3>
-                <div className="space-y-3">
-                  <p>
-                    <strong>1. Acceptance of Terms:</strong> By accessing or using Osborne (&quot;the Service&quot;), 
-                    you agree to be bound by these Terms of Service. If you do not agree to these terms, 
-                    you may not use the Service.
-                  </p>
-                  <p>
-                    <strong>2. Service Description:</strong> Osborne is a real-time collaborative text editor 
-                    that allows users to create and join rooms for collaborative editing. The Service is 
-                    provided &quot;as is&quot; without warranty of any kind.
-                  </p>
-                  <p>
-                    <strong>3. User Responsibilities:</strong> You are solely responsible for all content 
-                    you upload, share, or transmit through the Service. You agree not to use the Service 
-                    for any illegal, harmful, or inappropriate purposes.
-                  </p>
-                  <p>
-                    <strong>4. Content Ownership:</strong> You retain ownership of your content. However, 
-                    by using the Service, you grant us a non-exclusive, royalty-free license to host, 
-                    store, and transmit your content as necessary to provide the Service.
-                  </p>
-                  <p>
-                    <strong>5. Prohibited Conduct:</strong> You agree not to upload, share, or transmit 
-                    content that is illegal, harmful, threatening, abusive, defamatory, obscene, or 
-                    otherwise objectionable.
-                  </p>
-                  <p>
-                    <strong>6. Service Availability:</strong> We do not guarantee that the Service will 
-                    be available at all times or that it will be error-free. We may modify, suspend, 
-                    or discontinue the Service at any time without notice.
-                  </p>
-                </div>
-              </section>
+            <section>
+              <h3 className="font-semibold text-base mb-3">Service Description</h3>
+              <p>
+                Osborne is a real-time collaborative text editing platform that allows multiple users to 
+                simultaneously edit documents, share code, and collaborate on text-based projects. The service 
+                is provided &quot;as is&quot; without warranties of any kind.
+              </p>
+            </section>
 
-              {/* Disclaimer */}
-              <section>
-                <h3 className="text-lg font-semibold mb-3">Disclaimer of Liability</h3>
-                <div className="space-y-3">
-                  <p>
-                    <strong>1. User-Generated Content:</strong> The Service allows users to upload and 
-                    share content. We do not monitor, review, or control user-generated content and 
-                    are not responsible for any content uploaded by users.
-                  </p>
-                  <p>
-                    <strong>2. No Warranty:</strong> THE SERVICE IS PROVIDED &quot;AS IS&quot; AND &quot;AS AVAILABLE&quot; 
-                    WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO 
-                    WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
-                  </p>
-                  <p>
-                    <strong>3. Limitation of Liability:</strong> TO THE MAXIMUM EXTENT PERMITTED BY LAW, 
-                    WE SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR 
-                    PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS OR REVENUES, WHETHER INCURRED DIRECTLY 
-                    OR INDIRECTLY, OR ANY LOSS OF DATA, USE, OR OTHER INTANGIBLE LOSSES.
-                  </p>
-                  <p>
-                    <strong>4. Third-Party Content:</strong> We are not responsible for content uploaded 
-                    by third parties. Users upload content at their own risk. We do not endorse, 
-                    support, or guarantee the accuracy or reliability of any user-generated content.
-                  </p>
-                  <p>
-                    <strong>5. Security:</strong> While we implement reasonable security measures, we 
-                    cannot guarantee the security of data transmitted through the Service. Users 
-                    transmit data at their own risk.
-                  </p>
-                  <p>
-                    <strong>6. Indemnification:</strong> You agree to indemnify and hold us harmless 
-                    from any claims, damages, losses, or expenses arising from your use of the Service 
-                    or violation of these terms.
-                  </p>
-                </div>
-              </section>
-
-              {/* Copyright and DMCA */}
-              <section>
-                <h3 className="text-lg font-semibold mb-3">Copyright & Intellectual Property</h3>
-                <div className="space-y-3">
-                  <p>
-                    <strong>1. Respect for Intellectual Property:</strong> Users must respect the 
-                    intellectual property rights of others. Do not upload content that infringes 
-                    on copyrights, trademarks, or other intellectual property rights.
-                  </p>
-                  <p>
-                    <strong>2. DMCA Compliance:</strong> We respond to valid DMCA takedown notices. 
-                    If you believe your copyrighted work has been infringed, please contact us with 
-                    appropriate documentation.
-                  </p>
-                  <p>
-                    <strong>3. Safe Harbor:</strong> We qualify for safe harbor protections under 
-                    applicable copyright laws as we are a service provider that hosts user-generated 
-                    content without prior review or knowledge of its contents.
-                  </p>
-                  <p>
-                    <strong>4. Content Removal:</strong> We reserve the right to remove any content 
-                    that we believe, in our sole discretion, violates these terms or applicable laws.
-                  </p>
-                  <p>
-                    <strong>5. User License:</strong> By uploading content, you represent that you 
-                    have the right to upload such content and grant others the ability to view and 
-                    collaborate on such content through the Service.
-                  </p>
-                </div>
-              </section>
-
-              {/* Data and Privacy */}
-              <section>
-                <h3 className="text-lg font-semibold mb-3">Data and Privacy</h3>
-                <div className="space-y-3">
-                  <p>
-                    <strong>1. Data Collection:</strong> We collect minimal data necessary to provide 
-                    the Service. We do not sell or share personal information with third parties 
-                    except as necessary to operate the Service.
-                  </p>
-                  <p>
-                    <strong>2. Content Storage:</strong> Content uploaded to the Service may be 
-                    temporarily stored to enable collaboration. We make no guarantees about data 
-                    persistence or backup.
-                  </p>
-                  <p>
-                    <strong>3. No Monitoring:</strong> We do not actively monitor user content or 
-                    communications. Any moderation is reactive and based on reports or automated systems.
-                  </p>
-                </div>
-              </section>
-
-              {/* General Provisions */}
-              <section>
-                <h3 className="text-lg font-semibold mb-3">General Provisions</h3>
-                <div className="space-y-3">
-                  <p>
-                    <strong>1. Changes to Terms:</strong> We may update these terms at any time. 
-                    Continued use of the Service constitutes acceptance of updated terms.
-                  </p>
-                  <p>
-                    <strong>2. Governing Law:</strong> These terms are governed by the laws of the 
-                    jurisdiction where the service operator resides, without regard to conflict 
-                    of law provisions.
-                  </p>
-                  <p>
-                    <strong>3. Severability:</strong> If any provision of these terms is found 
-                    unenforceable, the remaining provisions will remain in effect.
-                  </p>
-                  <p>
-                    <strong>4. Contact:</strong> For questions about these terms or to report 
-                    violations, contact the service administrator.
-                  </p>
-                </div>
-              </section>
-
-              <div className="border-t pt-4 text-center text-muted-foreground">
-                <p>Last Updated: {new Date().toLocaleDateString()}</p>
-                <p className="mt-2 font-semibold">
-                  BY USING THIS SERVICE, YOU ACKNOWLEDGE THAT YOU HAVE READ, UNDERSTOOD, 
-                  AND AGREE TO BE BOUND BY THESE TERMS.
-                </p>
+            <section>
+              <h3 className="font-semibold text-base mb-3">User Content & Liability Disclaimer</h3>
+              <p className="mb-3">
+                <strong>IMPORTANT:</strong> Users are solely responsible for all content they create, upload, 
+                share, or collaborate on through our platform. We do not monitor, review, or control user-generated content.
+              </p>
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-4 rounded-md">
+                <h4 className="font-semibold mb-2">Content Liability Waiver</h4>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>We are not responsible for any content created or shared by users</li>
+                  <li>We do not endorse, verify, or guarantee the accuracy of user content</li>
+                  <li>Users assume full legal responsibility for their content and actions</li>
+                  <li>We reserve the right to remove content that violates our terms or applicable laws</li>
+                </ul>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-    </>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-base mb-3">Privacy & Data Handling</h3>
+              <p className="mb-3">Your privacy is important to us. Here&apos;s how we handle your data:</p>
+              <ul className="list-disc pl-6 space-y-2">
+                <li><strong>Document Content:</strong> Stored temporarily for collaboration; users control persistence</li>
+                <li><strong>No Personal Data Collection:</strong> We don&apos;t require registration or collect personal information</li>
+                <li><strong>Session Data:</strong> Room codes and collaborative sessions are temporary</li>
+                <li><strong>No Tracking:</strong> We don&apos;t use analytics or tracking cookies</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-base mb-3">Acceptable Use Policy</h3>
+              <div className="space-y-3">
+                <div>
+                  <h4 className="font-medium text-green-700 dark:text-green-400">✓ Permitted Uses:</h4>
+                  <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
+                    <li>Collaborative document editing and code sharing</li>
+                    <li>Educational and professional projects</li>
+                    <li>Open source development and documentation</li>
+                    <li>Creative writing and content creation</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-medium text-red-700 dark:text-red-400">✗ Prohibited Uses:</h4>
+                  <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
+                    <li>Illegal activities or content that violates applicable laws</li>
+                    <li>Harassment, hate speech, or discriminatory content</li>
+                    <li>Copyrighted material without proper authorization</li>
+                    <li>Malicious code, viruses, or security threats</li>
+                    <li>Spam, phishing, or fraudulent activities</li>
+                  </ul>
+                </div>
+              </div>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-base mb-3">Service Availability & Technical Disclaimers</h3>
+              <div className="bg-muted p-4 rounded-md space-y-2">
+                <p><strong>No Uptime Guarantees:</strong> Service availability is not guaranteed; planned and unplanned outages may occur.</p>
+                <p><strong>Data Loss Risk:</strong> Users should maintain backups; we&apos;re not liable for any data loss or corruption.</p>
+                <p><strong>Beta Software:</strong> This service may contain bugs, errors, or incomplete features.</p>
+                <p><strong>No Support Obligation:</strong> Technical support is provided on a best-effort basis.</p>
+              </div>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-base mb-3">Limitation of Liability</h3>
+              <p>
+                TO THE MAXIMUM EXTENT PERMITTED BY LAW, WE SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, 
+                SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF PROFITS, 
+                DATA, OR USE, ARISING OUT OF OR RELATING TO YOUR USE OF THE SERVICE.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-base mb-3">Intellectual Property</h3>
+              <p className="mb-3">
+                Users retain ownership of their original content. By using our service, users grant us a 
+                limited license to host, store, and facilitate collaboration on their content solely for 
+                the purpose of providing the service.
+              </p>
+              <p>
+                The Osborne platform, its code, design, and functionality are protected by intellectual 
+                property laws and remain the property of WebArk and its licensors.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-base mb-3">Termination</h3>
+              <p>
+                We reserve the right to terminate or suspend access to our service at any time, without 
+                prior notice, for conduct that we believe violates these terms or is harmful to other 
+                users, us, or third parties.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-base mb-3">Governing Law</h3>
+              <p>
+                These terms shall be interpreted and governed in accordance with applicable laws. 
+                Any disputes shall be resolved through appropriate legal channels.
+              </p>
+            </section>
+
+            <section className="border-t pt-4">
+              <p className="text-xs text-muted-foreground">
+                <strong>Last Updated:</strong> October 31, 2025<br/>
+                These terms are subject to change. Continued use of the service constitutes acceptance of any modifications.
+                For questions or concerns, contact: mail@webark.in
+              </p>
+            </section>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
