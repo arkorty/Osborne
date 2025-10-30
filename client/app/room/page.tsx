@@ -34,10 +34,7 @@ import debounce from "lodash/debounce";
 import dotenv from "dotenv";
 import { JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
-import { LegalFooter } from "@/components/Footer";
 import { ContentWarningModal } from "@/components/ContentWarningModal";
-import { DMCAModalComponent } from "@/components/DMCAModal";
-import { DisclaimerModalComponent } from "@/components/DisclaimerModal";
 
 dotenv.config();
 
@@ -214,7 +211,7 @@ const Room = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPurgeModalOpen, setIsPurgeModalOpen] = useState(false);
   const [showDisconnectToast, setShowDisconnectToast] = useState(false);
-  const [currentThemeId, setCurrentThemeId] = useState("one-dark-pro");
+  const [currentThemeId, setCurrentThemeId] = useState("one-dark");
   const [selectedLineStart, setSelectedLineStart] = useState<number>();
   const [selectedLineEnd, setSelectedLineEnd] = useState<number>();
   const [comments, setComments] = useState<Comment[]>([]);
@@ -226,8 +223,6 @@ const Room = () => {
   const [rightPanelForced, setRightPanelForced] = useState(false);
   const [popupMessage, setPopupMessage] = useState<{text: string; type?: 'default' | 'warning'} | null>(null);
   const [isMobile, setIsMobile] = useState(false);
-  const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(false);
-  const [isDMCAOpen, setIsDMCAOpen] = useState(false);
   
   // Detect mobile screen size
   useEffect(() => {
@@ -1086,21 +1081,8 @@ const Room = () => {
       {/* Content Warning Modal */}
       <ContentWarningModal />
 
-      {/* Legal Footer */}
-      <LegalFooter 
-        onDisclaimerOpen={() => setIsDisclaimerOpen(true)}
-        onDMCAOpen={() => setIsDMCAOpen(true)}
-      />
-      
-      {/* Modals */}
-      <DisclaimerModalComponent 
-        isOpen={isDisclaimerOpen} 
-        onClose={() => setIsDisclaimerOpen(false)} 
-      />
-      <DMCAModalComponent 
-        isOpen={isDMCAOpen} 
-        onClose={() => setIsDMCAOpen(false)} 
-      />
+        {/* Content Warning Modal */}
+        <ContentWarningModal />
     </div>
   );
 };

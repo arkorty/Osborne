@@ -235,7 +235,7 @@ func main() {
 		httpMux.HandleFunc("/o/upload", corsMiddleware(handleFileUpload))
 		httpMux.HandleFunc("/o/files/", corsMiddleware(handleFileServe))
 		httpMux.HandleFunc("/o/delete/", corsMiddleware(handleFileDelete))
-		httpMux.HandleFunc("/purge/", corsMiddleware(handleRoomPurge))
+		httpMux.HandleFunc("/o/purge/", corsMiddleware(handleRoomPurge))
 
 		http_port := 8090
 

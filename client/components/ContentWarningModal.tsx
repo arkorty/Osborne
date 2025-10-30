@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { TriangleAlert } from "lucide-react";
 
 export const ContentWarningModal = () => {
   const [showWarning, setShowWarning] = useState(false);
@@ -26,7 +27,8 @@ export const ContentWarningModal = () => {
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <Card className="max-w-md">
         <CardHeader>
-          <CardTitle className="text-center text-lg">⚠️ Content Disclaimer</CardTitle>
+          <TriangleAlert className="mx-auto mb-2 text-yellow-600 dark:text-yellow-400" size={48} />
+          <CardTitle className="text-center text-lg text-yellow-600 dark:text-yellow-400">Content Disclaimer</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
           <div className="text-center">
