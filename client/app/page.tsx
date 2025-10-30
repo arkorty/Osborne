@@ -105,9 +105,9 @@ const Home = () => {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-background dark:bg-background ui-font">
-      <Card className="relative z-10 px-12 py-24 backdrop-blur-sm shadow-lg bg-card/0 bg-opacity-0 dark:bg-card/70 border border-border dark:border-border flex flex-col items-center">
+      <Card className="relative z-10 px-6 md:px-12 py-12 md:py-24 backdrop-blur-sm shadow-lg bg-card/0 bg-opacity-0 dark:bg-card/70 border border-border dark:border-border flex flex-col items-center">
         <div className="flex flex-col items-center">
-          <h1 className="text-8xl translate-x-1.5 font-bold text-foreground mb-4">
+          <h1 className="text-6xl md:text-8xl translate-x-1.5 font-bold text-foreground mb-4">
             Osborne
           </h1>
         </div>
