@@ -208,6 +208,7 @@ const Room = () => {
   const [status, setStatus] = useState("Disconnected");
   const [error, setError] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPurgeModalOpen, setIsPurgeModalOpen] = useState(false);
   const [showDisconnectToast, setShowDisconnectToast] = useState(false);
   const [currentThemeId, setCurrentThemeId] = useState("one-dark-pro");
   const [selectedLineStart, setSelectedLineStart] = useState<number>();
@@ -656,11 +657,52 @@ const Room = () => {
     socketRef.current.send(JSON.stringify(message));
   };
 
+  const handleDeleteComment = (commentId: string) => {
+    if (!socketRef.current || !currentUser) return;
+
+    const message: CommentMessage = {
+      type: "comment-delete",
+      code: roomCode!,
+      comment: {
+        id: commentId,
+        lineNumber: null,
+        author: "",
+        authorId: "",
+        content: "",
+        timestamp: new Date(),
+      },
+    };
+
+    socketRef.current.send(JSON.stringify(message));
+  };
+
+  const handlePurgeRoom = async () => {
+    if (!roomCode) return;
+    
+    try {
+      const httpUrl = process.env.NEXT_PUBLIC_HTTP_URL || "http://localhost:8090";
+      const response = await fetch(`${httpUrl}/purge/${roomCode}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Purge failed: ${response.statusText}`);
+      }
+
+      router.push("/");
+    } catch (error) {
+      console.error("Error purging room:", error);
+      showPopup("Failed to purge room", "warning");
+    }
+    
+    setIsPurgeModalOpen(false);
+  };
+
   const handleFileUpload = async (files: FileList) => {
     if (!files || files.length === 0 || !currentUser) return;
 
     const maxFileSize = 10 * 1024 * 1024; // 10MB in bytes
-    const httpUrl = process.env.NEXT_PUBLIC_HTTP_URL || "http://localhost:8081";
+    const httpUrl = process.env.NEXT_PUBLIC_HTTP_URL || "http://localhost:8090";
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
@@ -680,7 +722,7 @@ const Room = () => {
         formData.append("uploadedBy", currentUser.name);
 
         // Upload file to HTTP server
-        const response = await fetch(`${httpUrl}/upload`, {
+        const response = await fetch(`${httpUrl}/o/upload`, {
           method: "POST",
           body: formData,
         });
@@ -705,10 +747,10 @@ const Room = () => {
   const handleFileDelete = async (fileId: string) => {
     if (!roomCode) return;
 
-    const httpUrl = process.env.NEXT_PUBLIC_HTTP_URL || "http://localhost:8081";
+    const httpUrl = process.env.NEXT_PUBLIC_HTTP_URL || "http://localhost:8090";
 
     try {
-      const response = await fetch(`${httpUrl}/delete/${roomCode}/${fileId}`, {
+      const response = await fetch(`${httpUrl}/o/delete/${roomCode}/${fileId}`, {
         method: "DELETE",
       });
 
@@ -727,7 +769,7 @@ const Room = () => {
 
   const showPopup = (message: string, type: 'default' | 'warning' = 'default') => {
     setPopupMessage({text: message, type});
-    setTimeout(() => setPopupMessage(null), 2000);
+    setTimeout(() => setPopupMessage(null), 3000);
   };
 
   if (!isClient) return null;
@@ -748,27 +790,11 @@ const Room = () => {
       >
         <div
           className={`flex flex-col items-center relative z-10 w-full h-full bg-card dark:bg-card shadow-md transition-all duration-300 ${
-            isModalOpen ? "blur-sm" : ""
+            isModalOpen || isPurgeModalOpen ? "blur-sm" : ""
           }`}
         >
           <div className="flex flex-row items-center justify-between p-1 w-full">
             <div className="flex gap-1">
-              <HoverCard>
-                <HoverCardTrigger>
-                  <Button
-                    className="text-foreground bg-secondary px-2 py-0 h-5 rounded-sm text-xs btn-micro"
-                    onClick={() => {
-                      navigator.clipboard.writeText(roomCode);
-                      showPopup("Room code copied to clipboard!");
-                    }}
-                  >
-                    {roomCode}
-                  </Button>
-                </HoverCardTrigger>
-                <HoverCardContent className="py-1 px-2 w-auto text-popover-foreground bg-popover text-xs border-foreground">
-                  copy room code: {roomCode}
-                </HoverCardContent>
-              </HoverCard>
               <HoverCard>
                 <HoverCardTrigger>
                   <Button
@@ -782,8 +808,22 @@ const Room = () => {
                     share
                   </Button>
                 </HoverCardTrigger>
-                <HoverCardContent className="py-1 px-2 w-auto text-popover-foreground bg-popover text-xs border-foreground">
+                <HoverCardContent className="py-1 px-2 w-auto text-popover-foreground bg-popover text-xs border-foreground z-50">
                   copy link to this page
+                </HoverCardContent>
+              </HoverCard>
+              <HoverCard>
+                <HoverCardTrigger>
+                  <Button
+                    className="bg-destructive px-2 py-0 h-5 text-xs rounded-sm hover:bg-destructive/80 btn-micro"
+                    variant="destructive"
+                    onClick={() => setIsPurgeModalOpen(true)}
+                  >
+                    purge
+                  </Button>
+                </HoverCardTrigger>
+                <HoverCardContent className="py-1 px-2 w-auto text-popover-foreground bg-popover text-xs border-foreground z-50">
+                  permanently delete this room and all its contents
                 </HoverCardContent>
               </HoverCard>
               <HoverCard>
@@ -796,7 +836,7 @@ const Room = () => {
                     exit
                   </Button>
                 </HoverCardTrigger>
-                <HoverCardContent className="py-1 px-2 w-auto text-popover-foreground bg-popover text-xs border-foreground">
+                <HoverCardContent className="py-1 px-2 w-auto text-popover-foreground bg-popover text-xs border-foreground z-50">
                   return to home
                 </HoverCardContent>
               </HoverCard>
@@ -814,7 +854,7 @@ const Room = () => {
                     upload
                   </Button>
                 </HoverCardTrigger>
-                <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground">
+                <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground z-50">
                   upload files
                 </HoverCardContent>
               </HoverCard>
@@ -832,7 +872,7 @@ const Room = () => {
                     theme
                   </Button>
                 </HoverCardTrigger>
-                <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground">
+                <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground z-50">
                   {getThemeById(currentThemeId)?.name || "Switch theme"}
                 </HoverCardContent>
               </HoverCard>
@@ -849,7 +889,7 @@ const Room = () => {
                         media
                       </Button>
                     </HoverCardTrigger>
-                    <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground">
+                    <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground z-50">
                       toggle users & media panel
                     </HoverCardContent>
                   </HoverCard>
@@ -862,7 +902,7 @@ const Room = () => {
                         notes
                       </Button>
                     </HoverCardTrigger>
-                    <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground">
+                    <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground z-50">
                       toggle comments panel
                     </HoverCardContent>
                   </HoverCard>
@@ -924,6 +964,7 @@ const Room = () => {
         onCommentSelect={handleCommentSelect}
         comments={comments}
         onAddComment={handleAddComment}
+        onDeleteComment={handleDeleteComment}
         currentUser={currentUser}
       />
 
@@ -960,6 +1001,47 @@ const Room = () => {
         onFileDelete={handleFileDelete}
         onModalStateChange={setIsModalOpen}
       />
+
+      {/* Purge Confirmation Modal */}
+      {isPurgeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Blurred overlay */}
+          <div 
+            className="absolute inset-0 bg-background/60 backdrop-blur-sm transition-all duration-300"
+            onClick={() => setIsPurgeModalOpen(false)}
+          />
+          {/* Modal */}
+          <div className="relative bg-card border border-border rounded-lg shadow-lg p-6 max-w-md w-full mx-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <h2 className="text-lg font-semibold text-foreground mb-4">Purge Room</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              Are you sure you want to permanently delete this room and all its contents? 
+              This action cannot be undone and will remove:
+            </p>
+            <ul className="text-sm text-muted-foreground mb-6 list-disc list-inside space-y-1">
+              <li>All code content</li>
+              <li>All comments</li>
+              <li>All uploaded files</li>
+              <li>Room history</li>
+            </ul>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setIsPurgeModalOpen(false)}
+                className="text-sm text-foreground"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handlePurgeRoom}
+                className="text-sm"
+              >
+                Purge Room
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Comments Panel */}
       {showDisconnectToast && (

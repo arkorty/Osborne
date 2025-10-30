@@ -235,6 +235,7 @@ func main() {
 		httpMux.HandleFunc("/o/upload", corsMiddleware(handleFileUpload))
 		httpMux.HandleFunc("/o/files/", corsMiddleware(handleFileServe))
 		httpMux.HandleFunc("/o/delete/", corsMiddleware(handleFileDelete))
+		httpMux.HandleFunc("/purge/", corsMiddleware(handleRoomPurge))
 
 		http_port := 8090
 
@@ -419,7 +420,7 @@ func handleFileDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Extract room code and file ID from URL path
-	path := r.URL.Path[10:] // Remove "/delete/" prefix
+	path := r.URL.Path[10:] // Remove "/o/delete/" prefix
 	if path == "" {
 		http.Error(w, "Invalid file path", http.StatusBadRequest)
 		return
@@ -484,6 +485,70 @@ func handleFileDelete(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("File deleted successfully"))
+}
+
+func handleRoomPurge(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "DELETE" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract room code from URL path
+	path := r.URL.Path[9:] // Remove "/purge/" prefix
+	if path == "" {
+		http.Error(w, "Room code required", http.StatusBadRequest)
+		return
+	}
+
+	roomCode := path
+
+	// First, disconnect all clients and remove room from memory
+	roomsMutex.Lock()
+	room, exists := rooms[roomCode]
+	if exists {
+		// Disconnect all clients
+		room.mutex.Lock()
+		for _, client := range room.Clients {
+			if client.Conn != nil {
+				client.Conn.Close()
+			}
+		}
+		room.mutex.Unlock()
+
+		// Remove room from memory
+		delete(rooms, roomCode)
+	}
+	roomsMutex.Unlock()
+
+	// Delete from database - room content
+	if err := deleteRoomContent(roomCode); err != nil {
+		log.Printf("Error deleting room content: %v", err)
+		http.Error(w, "Failed to delete room content", http.StatusInternalServerError)
+		return
+	}
+
+	// Delete all comments for this room
+	if err := deleteRoomComments(roomCode); err != nil {
+		log.Printf("Error deleting room comments: %v", err)
+		http.Error(w, "Failed to delete room comments", http.StatusInternalServerError)
+		return
+	}
+
+	// Delete all media files for this room
+	if err := deleteRoomMedia(roomCode); err != nil {
+		log.Printf("Error deleting room media files: %v", err)
+		http.Error(w, "Failed to delete room media files", http.StatusInternalServerError)
+		return
+	}
+
+	// Delete physical files from filesystem
+	roomDir := filepath.Join(filesDir, roomCode)
+	if err := os.RemoveAll(roomDir); err != nil {
+		log.Printf("Warning: Could not delete room directory %s: %v", roomDir, err)
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Room purged successfully"))
 }
 
 func checkClientPings() {
@@ -872,7 +937,44 @@ func handleCommentUpdate(conn *websocket.Conn, message []byte, currentRoom strin
 }
 
 func handleCommentDelete(conn *websocket.Conn, message []byte, currentRoom string, clientID string) {
-	// Similar implementation for comment deletion
+	if currentRoom == "" || clientID == "" {
+		return
+	}
+
+	var commentMsg CommentMessage
+	if err := json.Unmarshal(message, &commentMsg); err != nil {
+		log.Printf("Error unmarshaling comment delete message: %v", err)
+		return
+	}
+
+	roomsMutex.RLock()
+	room, exists := rooms[currentRoom]
+	roomsMutex.RUnlock()
+
+	if !exists {
+		return
+	}
+
+	// Allow anyone to delete comments - no authorization check needed
+
+	// Delete from database
+	if err := deleteComment(commentMsg.Comment.ID); err != nil {
+		log.Printf("Error deleting comment from database: %v", err)
+		return
+	}
+
+	// Remove from room
+	room.mutex.Lock()
+	for i, comment := range room.Comments {
+		if comment.ID == commentMsg.Comment.ID {
+			room.Comments = append(room.Comments[:i], room.Comments[i+1:]...)
+			break
+		}
+	}
+	room.mutex.Unlock()
+
+	// Broadcast to all clients
+	broadcastToRoom(room, commentMsg, "")
 }
 
 func handleUserActivity(conn *websocket.Conn, message []byte, currentRoom string, clientID string) {
@@ -1046,11 +1148,9 @@ func getRoomContent(code string) (string, error) {
 	return content, nil
 }
 
-func deleteRoomContent(code string) {
+func deleteRoomContent(code string) error {
 	_, err := db.Exec("DELETE FROM rooms WHERE code = ?", code)
-	if err != nil {
-		log.Printf("Error deleting room content for room %s: %v", code, err)
-	}
+	return err
 }
 
 func saveComment(roomCode string, comment Comment) error {
@@ -1058,6 +1158,11 @@ func saveComment(roomCode string, comment Comment) error {
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		comment.ID, roomCode, comment.LineNumber, comment.LineRange,
 		comment.Author, comment.AuthorID, comment.Content, comment.Timestamp)
+	return err
+}
+
+func deleteComment(commentID string) error {
+	_, err := db.Exec(`DELETE FROM comments WHERE id = ?`, commentID)
 	return err
 }
 
@@ -1083,11 +1188,9 @@ func getRoomComments(roomCode string) ([]Comment, error) {
 	return comments, nil
 }
 
-func deleteRoomComments(roomCode string) {
+func deleteRoomComments(roomCode string) error {
 	_, err := db.Exec("DELETE FROM comments WHERE room_code = ?", roomCode)
-	if err != nil {
-		log.Printf("Error deleting comments for room %s: %v", roomCode, err)
-	}
+	return err
 }
 
 func getRoomMedia(roomCode string) ([]MediaFile, error) {
@@ -1112,11 +1215,9 @@ func getRoomMedia(roomCode string) ([]MediaFile, error) {
 	return mediaFiles, nil
 }
 
-func deleteRoomMedia(roomCode string) {
+func deleteRoomMedia(roomCode string) error {
 	_, err := db.Exec("DELETE FROM media_files WHERE room_code = ?", roomCode)
-	if err != nil {
-		log.Printf("Error deleting media files for room %s: %v", roomCode, err)
-	}
+	return err
 }
 
 func saveMediaFile(roomCode string, media MediaFile) error {

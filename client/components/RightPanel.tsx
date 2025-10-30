@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, X } from 'lucide-react';
 
 interface Comment {
   id: string;
@@ -31,6 +31,7 @@ interface CommentsPageProps {
   onCommentSelect?: (lineNumber: number, lineRange?: string) => void;
   comments?: Comment[];
   onAddComment?: (content: string, lineNumber?: number, lineRange?: string) => void;
+  onDeleteComment?: (commentId: string) => void;
   currentUser?: User | null;
 }
 
@@ -41,6 +42,7 @@ export const CommentsPanel: React.FC<CommentsPageProps> = ({
   onCommentSelect,
   comments = [],
   onAddComment,
+  onDeleteComment,
   currentUser
 }) => {
   const [newComment, setNewComment] = useState('');
@@ -139,7 +141,7 @@ export const CommentsPanel: React.FC<CommentsPageProps> = ({
             .map((comment) => (
               <Card 
                 key={comment.id} 
-                className="border-border hover:shadow-md transition-shadow cursor-pointer"
+                className="border-border hover:shadow-md transition-shadow cursor-pointer group"
                 onClick={() => {
                   if (comment.lineNumber && onCommentSelect) {
                     onCommentSelect(comment.lineNumber, comment.lineRange);
@@ -161,9 +163,23 @@ export const CommentsPanel: React.FC<CommentsPageProps> = ({
                         </Badge>
                       )}
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      {formatTime(comment.timestamp)}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground">
+                        {formatTime(comment.timestamp)}
+                      </span>
+                      {currentUser && onDeleteComment && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteComment(comment.id);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/20 rounded-sm"
+                          title="Delete comment"
+                        >
+                          <X size={12} className="text-destructive" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
