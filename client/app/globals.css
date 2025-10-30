@@ -210,6 +210,16 @@
     box-shadow: 0 0 0 2px var(--primary);
     outline: none;
   }
+
+  /* Hide scrollbars */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 

@@ -24,48 +24,6 @@ export interface ThemeConfig {
 
 export const VSCODE_THEMES: ThemeConfig[] = [
   {
-    id: 'one-dark-pro',
-    name: 'One Dark Pro',
-    type: 'dark',
-    colors: {
-      background: 'hsl(220, 13%, 18%)',
-      foreground: 'hsl(220, 9%, 55%)',
-      card: 'hsl(220, 13%, 20%)',
-      cardForeground: 'hsl(220, 9%, 55%)',
-      popover: 'hsl(220, 13%, 20%)',
-      popoverForeground: 'hsl(220, 9%, 55%)',
-      border: 'hsl(220, 13%, 25%)',
-      primary: 'hsl(187, 47%, 55%)',
-      primaryForeground: 'hsl(220, 13%, 18%)',
-      muted: 'hsl(220, 13%, 22%)',
-      mutedForeground: 'hsl(220, 9%, 40%)',
-      accent: 'hsl(220, 13%, 22%)',
-      accentForeground: 'hsl(220, 9%, 55%)',
-      destructive: 'hsl(355, 65%, 65%)',
-      destructiveForeground: 'hsl(220, 13%, 18%)',
-    }
-  },
-  {
-    id: 'dracula',
-    name: 'Dracula Official',
-    type: 'dark',
-    colors: {
-      background: 'hsl(231, 15%, 18%)',
-      foreground: 'hsl(60, 30%, 96%)',
-      card: 'hsl(232, 14%, 20%)',
-      cardForeground: 'hsl(60, 30%, 96%)',
-      border: 'hsl(231, 11%, 27%)',
-      primary: 'hsl(265, 89%, 78%)',
-      primaryForeground: 'hsl(231, 15%, 18%)',
-      muted: 'hsl(232, 14%, 22%)',
-      mutedForeground: 'hsl(233, 15%, 41%)',
-      accent: 'hsl(232, 14%, 22%)',
-      accentForeground: 'hsl(60, 30%, 96%)',
-      destructive: 'hsl(0, 100%, 67%)',
-      destructiveForeground: 'hsl(231, 15%, 18%)',
-    }
-  },
-  {
     id: 'github-dark',
     name: 'GitHub Dark',
     type: 'dark',
@@ -146,8 +104,8 @@ export const VSCODE_THEMES: ThemeConfig[] = [
     }
   },
   {
-    id: 'monokai-pro',
-    name: 'Monokai Pro',
+    id: 'monokai',
+    name: 'Monokai',
     type: 'dark',
     colors: {
       background: 'hsl(60, 3%, 15%)',
@@ -227,7 +185,7 @@ export const VSCODE_THEMES: ThemeConfig[] = [
   },
   {
     id: 'light-plus',
-    name: 'Light+ (default light)',
+    name: 'Light+',
     type: 'light',
     colors: {
       background: 'hsl(0, 0%, 100%)',
@@ -266,8 +224,8 @@ export const VSCODE_THEMES: ThemeConfig[] = [
     }
   },
   {
-    id: 'one-dark-pro',
-    name: 'One Dark Pro',
+    id: 'one-dark',
+    name: 'One Dark',
     type: 'dark',
     colors: {
       background: 'hsl(220, 13%, 18%)',

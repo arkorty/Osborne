@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CommentsPanel } from "@/components/RightPanel";
-import { CodeEditor, CodeEditorRef } from "@/components/CodeEditor";
+import { CodeEditor, CodeEditorRef } from "@/components/Editor";
 import { LeftPanel } from "@/components/LeftPanel";
 import {
   getThemeById,
@@ -34,6 +34,10 @@ import debounce from "lodash/debounce";
 import dotenv from "dotenv";
 import { JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { LegalFooter } from "@/components/Footer";
+import { ContentWarningModal } from "@/components/ContentWarningModal";
+import { DMCAModalComponent } from "@/components/DMCAModalComponent";
+import { DisclaimerModalComponent } from "@/components/DisclaimerModalComponent";
 
 dotenv.config();
 
@@ -222,6 +226,8 @@ const Room = () => {
   const [rightPanelForced, setRightPanelForced] = useState(false);
   const [popupMessage, setPopupMessage] = useState<{text: string; type?: 'default' | 'warning'} | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(false);
+  const [isDMCAOpen, setIsDMCAOpen] = useState(false);
   
   // Detect mobile screen size
   useEffect(() => {
@@ -1076,6 +1082,25 @@ const Room = () => {
           </div>
         </div>
       )}
+
+      {/* Content Warning Modal */}
+      <ContentWarningModal />
+
+      {/* Legal Footer */}
+      <LegalFooter 
+        onDisclaimerOpen={() => setIsDisclaimerOpen(true)}
+        onDMCAOpen={() => setIsDMCAOpen(true)}
+      />
+      
+      {/* Modals */}
+      <DisclaimerModalComponent 
+        isOpen={isDisclaimerOpen} 
+        onClose={() => setIsDisclaimerOpen(false)} 
+      />
+      <DMCAModalComponent 
+        isOpen={isDMCAOpen} 
+        onClose={() => setIsDMCAOpen(false)} 
+      />
     </div>
   );
 };

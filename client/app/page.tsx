@@ -9,6 +9,7 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { Card, CardContent } from "@/components/ui/card";
+import { Heart } from "lucide-react";
 import { ThemeProvider } from "next-themes";
 import {
   VSCODE_THEMES,
@@ -17,28 +18,21 @@ import {
   saveThemeToCookie,
   getThemeFromCookie,
 } from "@/lib/themes";
+import { LegalFooter } from "@/components/Footer";
+import { DMCAModalComponent } from "@/components/DMCAModalComponent";
+import { DisclaimerModalComponent } from "@/components/DisclaimerModalComponent";
 
 const Home = () => {
   const router = useRouter();
   const [newRoomCode, setNewRoomCode] = useState("");
   const [currentThemeIndex, setCurrentThemeIndex] = useState(0);
   const [isClient, setIsClient] = useState(false);
+  const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(false);
+  const [isDMCAOpen, setIsDMCAOpen] = useState(false);
 
   const nextTheme = useCallback(() => {
     setCurrentThemeIndex((prevIndex) => {
       const newIndex = (prevIndex + 1) % VSCODE_THEMES.length;
-      const theme = VSCODE_THEMES[newIndex];
-      applyTheme(theme);
-      saveThemeToCookie(theme.id);
-      return newIndex;
-    });
-  }, []);
-
-  const prevTheme = useCallback(() => {
-    setCurrentThemeIndex((prevIndex) => {
-      const newIndex = prevIndex === 0
-        ? VSCODE_THEMES.length - 1
-        : prevIndex - 1;
       const theme = VSCODE_THEMES[newIndex];
       applyTheme(theme);
       saveThemeToCookie(theme.id);
@@ -70,10 +64,7 @@ const Home = () => {
 
     // Simple keyboard navigation
     const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        prevTheme();
-      } else if (e.key === "ArrowRight") {
+      if (e.key === "ArrowRight") {
         e.preventDefault();
         nextTheme();
       }
@@ -83,7 +74,7 @@ const Home = () => {
     return () => {
       window.removeEventListener("keydown", handleKeyPress);
     };
-  }, [nextTheme, prevTheme]);
+  }, [nextTheme]);
 
   useEffect(() => {
     const joinRoom = () => {
@@ -115,41 +106,23 @@ const Home = () => {
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-background dark:bg-background ui-font">
       <Card className="relative z-10 max-w-md min-w-96 backdrop-blur-sm shadow-lg bg-card/0 bg-opacity-0 dark:bg-card/70 border border-border dark:border-border  p-6 flex flex-col items-center">
-        {/* Theme Slider - Simple Version */}
-        <div className="w-full mb-6">
-          <div className="flex items-center justify-between bg-card rounded-lg p-3 border">
-            <button
-              onClick={prevTheme}
-              className="p-1 rounded hover:bg-muted transition-colors"
-              aria-label="Previous theme"
-            >
-              ←
-            </button>
-
-            <div className="text-center flex-1 mx-4">
-              <div className="text-sm font-medium text-foreground">
-                {currentTheme.name}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {currentThemeIndex + 1} of {VSCODE_THEMES.length}
-              </div>
-            </div>
-
-            <button
-              onClick={nextTheme}
-              className="p-1 rounded hover:bg-muted transition-colors"
-              aria-label="Next theme"
-            >
-              →
-            </button>
-          </div>
-        </div>
-
         <div className="flex flex-col items-center">
-          <h1 className="text-6xl font-bold text-foreground mb-4">
+          <h1 className="text-8xl translate-x-1.5 font-bold text-foreground mb-4">
             Osborne
           </h1>
         </div>
+
+        {/* Theme Switcher - Pill Button */}
+        <div className="mb-12">
+          <button
+            onClick={nextTheme}
+            className="px-4 min-w-36 py-2 bg-muted hover:bg-muted/80 rounded-full text-sm font-medium text-foreground transition-colors border border-border/50 hover:border-border"
+            aria-label="Switch to next theme"
+          >
+            {currentTheme.name}
+          </button>
+        </div>
+
         <CardContent className="flex flex-col items-center space-y-4 ui-font">
           <InputOTP
             value={newRoomCode}
@@ -174,8 +147,38 @@ const Home = () => {
           >
             Create Room
           </Button>
+
+          {/* Attribution */}
+          <div className="mt-6 pt-4 border-t border-border/50">
+            <p className="text-sm text-muted-foreground text-center">
+              made with <Heart className="inline w-4 h-4 text-red-500 mx-1" />{" "}
+              by{" "}
+              <a
+                href="https://webark.in"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline font-medium"
+              >
+                WebArk
+              </a>
+            </p>
+          </div>
         </CardContent>
       </Card>
+      <LegalFooter
+        onDisclaimerOpen={() => setIsDisclaimerOpen(true)}
+        onDMCAOpen={() => setIsDMCAOpen(true)}
+      />
+
+      {/* Modals */}
+      <DisclaimerModalComponent
+        isOpen={isDisclaimerOpen}
+        onClose={() => setIsDisclaimerOpen(false)}
+      />
+      <DMCAModalComponent
+        isOpen={isDMCAOpen}
+        onClose={() => setIsDMCAOpen(false)}
+      />
     </div>
   );
 };
