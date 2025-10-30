@@ -39,7 +39,6 @@ interface MediaFile {
 
 interface LeftPanelProps {
   isVisible: boolean;
-  isConnected: boolean;
   className?: string;
   users?: ActiveUser[];
   mediaFiles?: MediaFile[];
@@ -50,7 +49,6 @@ interface LeftPanelProps {
 
 export const LeftPanel: React.FC<LeftPanelProps> = ({
   isVisible,
-  className = '',
   users = [],
   mediaFiles = [],
   onFileDelete,
@@ -58,11 +56,56 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
 }) => {
   const [activeUsers, setActiveUsers] = useState<ActiveUser[]>(users);
   const [localMediaFiles, setLocalMediaFiles] = useState<MediaFile[]>(mediaFiles);
+  const [usersScrollState, setUsersScrollState] = useState({ top: false, bottom: false });
+  const [mediaScrollState, setMediaScrollState] = useState({ top: false, bottom: false });
+  
+  const usersScrollRef = useRef<HTMLDivElement>(null);
+  const mediaScrollRef = useRef<HTMLDivElement>(null);
   
   // Update local state when props change
   useEffect(() => {
     setActiveUsers(users);
   }, [users]);
+  
+  // Scroll detection function
+  const handleScroll = (element: HTMLDivElement | null, setState: (state: { top: boolean; bottom: boolean }) => void) => {
+    if (!element) return;
+    
+    const { scrollTop, scrollHeight, clientHeight } = element;
+    const isScrolledFromTop = scrollTop > 5;
+    const isScrolledFromBottom = scrollTop < scrollHeight - clientHeight - 5;
+    
+    setState({
+      top: isScrolledFromTop,
+      bottom: isScrolledFromBottom && scrollHeight > clientHeight
+    });
+  };
+  
+  // Add scroll listeners
+  useEffect(() => {
+    const usersElement = usersScrollRef.current;
+    const mediaElement = mediaScrollRef.current;
+    
+    const handleUsersScroll = () => handleScroll(usersElement, setUsersScrollState);
+    const handleMediaScroll = () => handleScroll(mediaElement, setMediaScrollState);
+    
+    if (usersElement) {
+      usersElement.addEventListener('scroll', handleUsersScroll);
+      // Initial check
+      handleUsersScroll();
+    }
+    
+    if (mediaElement) {
+      mediaElement.addEventListener('scroll', handleMediaScroll);
+      // Initial check
+      handleMediaScroll();
+    }
+    
+    return () => {
+      if (usersElement) usersElement.removeEventListener('scroll', handleUsersScroll);
+      if (mediaElement) mediaElement.removeEventListener('scroll', handleMediaScroll);
+    };
+  }, [activeUsers, localMediaFiles]);
   
   useEffect(() => {
     setLocalMediaFiles(mediaFiles);
@@ -195,15 +238,27 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
     document.body.removeChild(link);
   };
 
-  if (!isVisible) {
-    return null;
-  }
-
   return (
-    <div className={`w-64 flex flex-col space-y-4 ${className}`}>
+    <div 
+      className={`fixed left-0 top-0 h-full w-80 bg-card border-r border-border shadow-lg z-40 flex flex-col transition-transform duration-300 ease-in-out ui-font ${
+        isVisible ? 'transform-none' : '-translate-x-full'
+      }`}
+    >
       {/* Users Panel */}
-      <div className="bg-card border border-border rounded-md shadow-lg">
-        <CardContent className="p-2 space-y-3 max-h-64 overflow-y-auto">
+      <div className="h-1/2 flex flex-col border-b border-border">
+        <div className="flex items-center justify-center py-2 border-b border-border/50 bg-muted/20">
+          <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+            <Users size={16} />
+            Users
+          </h3>
+        </div>
+        
+        <div 
+          ref={usersScrollRef}
+          className={`flex-1 overflow-y-auto hide-scrollbar scroll-shadow p-2 space-y-2 ${
+            usersScrollState.top ? 'scroll-top' : ''
+          } ${usersScrollState.bottom ? 'scroll-bottom' : ''}`}
+        >
           {activeUsers.length === 0 ? (
             <div className="text-center text-muted-foreground py-4">
               <Users size={20} className="mx-auto mb-2 opacity-50" />
@@ -282,9 +337,10 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
               );
             })
           )}
-        </CardContent>
-        <div className="px-4 pb-3 border-t border-border bg-muted/50 rounded-b-md">
-          <div className="flex items-center justify-between text-xs text-muted-foreground pt-3">
+        </div>
+        
+        <div className="px-4 py-3 border-t border-border bg-muted/20">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>
               {activeUsers.filter(u => getStatusIndicator(u).status === 'online').length} online
             </span>
@@ -296,8 +352,20 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
       </div>
 
       {/* Media Panel */}
-      <div className="bg-card border border-border rounded-md shadow-lg">
-        <CardContent className="p-2 space-y-3 max-h-64 overflow-y-auto">
+      <div className="h-1/2 flex flex-col">
+        <div className="flex items-center justify-center py-2 border-b border-border/50 bg-muted/20">
+          <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+            <Upload size={16} />
+            Media
+          </h3>
+        </div>
+        
+        <div 
+          ref={mediaScrollRef}
+          className={`flex-1 overflow-y-auto hide-scrollbar scroll-shadow p-2 space-y-2 ${
+            mediaScrollState.top ? 'scroll-top' : ''
+          } ${mediaScrollState.bottom ? 'scroll-bottom' : ''}`}
+        >
           {localMediaFiles.length === 0 ? (
             <div className="text-center text-muted-foreground py-4">
               <Upload size={20} className="mx-auto mb-2 opacity-50" />
@@ -396,9 +464,10 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
               </Card>
             ))
           )}
-        </CardContent>
-        <div className="px-4 pb-3 border-t border-border bg-muted/50 rounded-b-md">
-          <div className="flex items-center justify-between text-xs text-muted-foreground pt-3">
+        </div>
+        
+        <div className="px-4 py-3 border-t border-border bg-muted/20">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>{localMediaFiles.length} files</span>
             <span>
               {formatFileSize(localMediaFiles.reduce((total, file) => total + file.size, 0))} total

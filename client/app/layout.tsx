@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { Bitcount_Grid_Single } from "next/font/google";
 import "./globals.css";
+
+const bitcountGridSingle = Bitcount_Grid_Single({
+  weight: "400",
+  variable: "--font-bitcount-grid",
+  subsets: ["latin"],
+});
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -42,7 +49,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${bitcountGridSingle.variable} antialiased`}
         suppressHydrationWarning
       >
         {children}

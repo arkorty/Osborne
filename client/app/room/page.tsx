@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, Suspense, useMemo } from "react";
+import {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  Suspense,
+  useMemo,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,17 +15,20 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { Link2, LogOut, Sun, Moon, Upload, WifiOff, RefreshCw } from "lucide-react";
+import {
+  WifiOff,
+  RefreshCw,
+} from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CommentsPanel } from "@/components/CommentsPanel";
+import { CommentsPanel } from "@/components/RightPanel";
 import { CodeEditor, CodeEditorRef } from "@/components/CodeEditor";
 import { LeftPanel } from "@/components/LeftPanel";
-import { 
-  getThemeById, 
-  getNextTheme, 
-  saveThemeToCookie, 
-  getThemeFromCookie, 
-  applyTheme 
+import {
+  getThemeById,
+  getNextTheme,
+  saveThemeToCookie,
+  getThemeFromCookie,
+  applyTheme,
 } from "@/lib/themes";
 import debounce from "lodash/debounce";
 import dotenv from "dotenv";
@@ -134,33 +144,54 @@ interface MediaSync {
   mediaFiles: MediaFile[];
 }
 
-type Message = 
-  | TextUpdate 
-  | InitialContent 
-  | JoinRoom 
-  | PingMessage 
-  | PongMessage 
-  | CommentMessage 
-  | CommentsSync 
-  | UserMessage 
-  | UsersSync 
-  | UserActivity 
-  | MediaMessage 
+type Message =
+  | TextUpdate
+  | InitialContent
+  | JoinRoom
+  | PingMessage
+  | PongMessage
+  | CommentMessage
+  | CommentsSync
+  | UserMessage
+  | UsersSync
+  | UserActivity
+  | MediaMessage
   | MediaSync;
 
 const WS_URL = `${process.env.NEXT_PUBLIC_WS_URL}`;
 
 // Utility functions
-const generateUserId = () => `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+const generateUserId = () =>
+  `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
 const generateUserName = () => {
-  const adjectives = ["Red", "Blue", "Green", "Yellow", "Purple", "Orange", "Pink", "Brown"];
+  const adjectives = [
+    "Red",
+    "Blue",
+    "Green",
+    "Yellow",
+    "Purple",
+    "Orange",
+    "Pink",
+    "Brown",
+  ];
   const nouns = ["Cat", "Dog", "Bird", "Fish", "Bear", "Lion", "Tiger", "Wolf"];
-  return `${adjectives[Math.floor(Math.random() * adjectives.length)]} ${nouns[Math.floor(Math.random() * nouns.length)]}`;
+  return `${adjectives[Math.floor(Math.random() * adjectives.length)]} ${
+    nouns[Math.floor(Math.random() * nouns.length)]
+  }`;
 };
 
 const generateUserColor = () => {
-  const colors = ["#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6", "#1abc9c", "#e67e22", "#34495e"];
+  const colors = [
+    "#e74c3c",
+    "#3498db",
+    "#2ecc71",
+    "#f39c12",
+    "#9b59b6",
+    "#1abc9c",
+    "#e67e22",
+    "#34495e",
+  ];
   return colors[Math.floor(Math.random() * colors.length)];
 };
 
@@ -176,17 +207,19 @@ const Room = () => {
   const [content, setContent] = useState("");
   const [status, setStatus] = useState("Disconnected");
   const [error, setError] = useState("");
-  const [commentsVisible, setCommentsVisible] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [windowWidth, setWindowWidth] = useState(0);
   const [showDisconnectToast, setShowDisconnectToast] = useState(false);
-  const [currentThemeId, setCurrentThemeId] = useState('one-dark-pro');
+  const [currentThemeId, setCurrentThemeId] = useState("one-dark-pro");
   const [selectedLineStart, setSelectedLineStart] = useState<number>();
   const [selectedLineEnd, setSelectedLineEnd] = useState<number>();
   const [comments, setComments] = useState<Comment[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [windowWidth, setWindowWidth] = useState(0);
+  const [leftPanelForced, setLeftPanelForced] = useState(false);
+  const [rightPanelForced, setRightPanelForced] = useState(false);
+  const [popupMessage, setPopupMessage] = useState<string | null>(null);
 
   const contentRef = useRef(content);
 
@@ -196,7 +229,46 @@ const Room = () => {
 
   useEffect(() => {
     setIsClient(true);
+    
+    // Set initial window width
+    const handleResize = () => {
+      const newWidth = window.innerWidth;
+      setWindowWidth(newWidth);
+      
+      // Force immediate panel state reset when crossing the breakpoint to larger
+      if (newWidth >= 1280) {
+        setLeftPanelForced(false);
+        setRightPanelForced(false);
+      }
+    };
+    
+    // Set initial value
+    handleResize();
+    
+    // Add event listener
+    window.addEventListener('resize', handleResize);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
+
+  // Calculate panel visibility based on window width
+  // Minimum width needed: 320px (left) + 640px (main content) + 320px (right) = 1280px
+  const shouldShowPanels = windowWidth >= 1280;
+  
+  // Auto-hide forced panels when screen size increases (do this before calculating visibility)
+  useEffect(() => {
+    if (shouldShowPanels) {
+      setLeftPanelForced(false);
+      setRightPanelForced(false);
+    }
+  }, [shouldShowPanels]);
+  
+  // Calculate final panel visibility - when shouldShowPanels is true, always show panels regardless of forced state
+  const showLeftPanel = shouldShowPanels || (!shouldShowPanels && leftPanelForced);
+  const showRightPanel = shouldShowPanels || (!shouldShowPanels && rightPanelForced);
 
   // Initialize theme from cookie
   useEffect(() => {
@@ -210,7 +282,7 @@ const Room = () => {
         }
       } else {
         // Apply default theme
-        const defaultTheme = getThemeById('one-dark-pro');
+        const defaultTheme = getThemeById("one-dark-pro");
         if (defaultTheme) {
           applyTheme(defaultTheme);
         }
@@ -225,18 +297,6 @@ const Room = () => {
       applyTheme(currentTheme);
     }
   }, [currentThemeId]);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setWindowWidth(window.innerWidth);
-    };
-
-    // Set initial width
-    handleResize();
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   // Show disconnect toast only if still disconnected after a delay
   useEffect(() => {
@@ -262,21 +322,19 @@ const Room = () => {
 
   // Calculate panel visibility based on viewport width
   // Left panel (256px) + Right panel (320px) + Main content (1280px) + padding (~100px) = ~1956px
-  const shouldHidePanels = windowWidth > 0 && windowWidth < 1700;
-  const leftPanelVisible = !shouldHidePanels;
-  const commentsVisibleResponsive = commentsVisible && !shouldHidePanels;
 
   const debouncedSend = useMemo(
-    () => debounce((ws: WebSocket, content: string, code: string) => {
-      if (ws.readyState === WebSocket.OPEN) {
-        const message: TextUpdate = {
-          type: "text-update",
-          content,
-          code,
-        };
-        ws.send(JSON.stringify(message));
-      }
-    }, 100),
+    () =>
+      debounce((ws: WebSocket, content: string, code: string) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          const message: TextUpdate = {
+            type: "text-update",
+            content,
+            code,
+          };
+          ws.send(JSON.stringify(message));
+        }
+      }, 100),
     []
   );
 
@@ -293,28 +351,28 @@ const Room = () => {
     ws.onopen = () => {
       setStatus("Connected");
       setError("");
-      
+
       // Create user if not exists
       const user: User = {
         id: generateUserId(),
         name: generateUserName(),
         color: generateUserColor(),
         lastSeen: new Date(),
-        isTyping: false
+        isTyping: false,
       };
       setCurrentUser(user);
-      
-      const message: JoinRoom = { 
-        type: "join-room", 
+
+      const message: JoinRoom = {
+        type: "join-room",
         code: roomCode,
-        user: user
+        user: user,
       };
       ws.send(JSON.stringify(message));
     };
 
     ws.onmessage = (event) => {
       const message: Message = JSON.parse(event.data);
-      
+
       switch (message.type) {
         case "initial-content":
         case "text-update":
@@ -322,84 +380,116 @@ const Room = () => {
             setContent(message.content);
           }
           break;
-          
+
         case "pong":
           // Handle pong response
           break;
-          
+
         case "comments-sync":
-          setComments(message.comments ? message.comments.map(c => ({
-            ...c,
-            timestamp: new Date(c.timestamp)
-          })) : []);
+          setComments(
+            message.comments
+              ? message.comments.map((c) => ({
+                  ...c,
+                  timestamp: new Date(c.timestamp),
+                }))
+              : []
+          );
           break;
-          
+
         case "comment-add":
-          setComments(prev => [...prev, {
-            ...message.comment,
-            timestamp: new Date(message.comment.timestamp)
-          }]);
+          setComments((prev) => [
+            ...prev,
+            {
+              ...message.comment,
+              timestamp: new Date(message.comment.timestamp),
+            },
+          ]);
           break;
-          
+
         case "comment-update":
-          setComments(prev => prev.map(c => 
-            c.id === message.comment.id 
-              ? { ...message.comment, timestamp: new Date(message.comment.timestamp) }
-              : c
-          ));
+          setComments((prev) =>
+            prev.map((c) =>
+              c.id === message.comment.id
+                ? {
+                    ...message.comment,
+                    timestamp: new Date(message.comment.timestamp),
+                  }
+                : c
+            )
+          );
           break;
-          
+
         case "comment-delete":
-          setComments(prev => prev.filter(c => c.id !== message.comment.id));
+          setComments((prev) =>
+            prev.filter((c) => c.id !== message.comment.id)
+          );
           break;
-          
+
         case "users-sync":
-          setUsers(message.users ? message.users.map(u => ({
-            ...u,
-            lastSeen: new Date(u.lastSeen)
-          })) : []);
+          setUsers(
+            message.users
+              ? message.users.map((u) => ({
+                  ...u,
+                  lastSeen: new Date(u.lastSeen),
+                }))
+              : []
+          );
           break;
-          
+
         case "user-joined":
-          setUsers(prev => [...prev, {
-            ...message.user,
-            lastSeen: new Date(message.user.lastSeen)
-          }]);
+          setUsers((prev) => [
+            ...prev,
+            {
+              ...message.user,
+              lastSeen: new Date(message.user.lastSeen),
+            },
+          ]);
           break;
-          
+
         case "user-left":
-          setUsers(prev => prev.filter(u => u.id !== message.user.id));
+          setUsers((prev) => prev.filter((u) => u.id !== message.user.id));
           break;
-          
+
         case "user-activity":
-          setUsers(prev => prev.map(u => 
-            u.id === message.userId 
-              ? { 
-                  ...u, 
-                  isTyping: message.isTyping, 
-                  currentLine: message.currentLine,
-                  lastSeen: new Date()
-                }
-              : u
-          ));
+          setUsers((prev) =>
+            prev.map((u) =>
+              u.id === message.userId
+                ? {
+                    ...u,
+                    isTyping: message.isTyping,
+                    currentLine: message.currentLine,
+                    lastSeen: new Date(),
+                  }
+                : u
+            )
+          );
           break;
-          
+
         case "media-sync":
-          setMediaFiles(message.mediaFiles ? message.mediaFiles.map(m => ({
-            ...m,
-            uploadedAt: new Date(m.uploadedAt)
-          })) : []);
+          setMediaFiles(
+            message.mediaFiles
+              ? message.mediaFiles.map((m) => ({
+                  ...m,
+                  uploadedAt: new Date(m.uploadedAt),
+                }))
+              : []
+          );
           break;
-          
+
         case "media-upload":
-          setMediaFiles(prev => [...prev, {
-            ...message.media,
-            uploadedAt: new Date(message.media.uploadedAt)
-          }]);
+          setMediaFiles((prev) => [
+            ...prev,
+            {
+              ...message.media,
+              uploadedAt: new Date(message.media.uploadedAt),
+            },
+          ]);
           break;
-          
+
         case "media-delete":
-          setMediaFiles(prev => prev.filter(m => m.id !== message.media.id));
+          setMediaFiles((prev) =>
+            prev.filter((m) => m.id !== message.media.id)
+          );
           break;
       }
     };
@@ -464,7 +554,9 @@ const Room = () => {
     if (editorRef.current) {
       if (lineRange) {
         // Parse line range like "5-8"
-        const [start, end] = lineRange.split('-').map(n => parseInt(n.trim()));
+        const [start, end] = lineRange
+          .split("-")
+          .map((n) => parseInt(n.trim()));
         editorRef.current.selectLines(start, end);
       } else {
         editorRef.current.selectLines(lineNumber);
@@ -472,23 +564,27 @@ const Room = () => {
     }
   };
 
-  const handleAddComment = (content: string, lineNumber?: number, lineRange?: string) => {
+  const handleAddComment = (
+    content: string,
+    lineNumber?: number,
+    lineRange?: string
+  ) => {
     if (!socketRef.current || !currentUser) return;
 
     const comment: Comment = {
-      id: '', // Will be set by server
+      id: "", // Will be set by server
       lineNumber: lineNumber || null,
       lineRange: lineRange,
       author: currentUser.name,
       authorId: currentUser.id,
       content: content,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
 
     const message: CommentMessage = {
       type: "comment-add",
       code: roomCode!,
-      comment: comment
+      comment: comment,
     };
 
     socketRef.current.send(JSON.stringify(message));
@@ -496,38 +592,37 @@ const Room = () => {
 
   const handleFileUpload = async (files: FileList) => {
     if (!files || files.length === 0 || !currentUser) return;
-    
-    const httpUrl = process.env.NEXT_PUBLIC_HTTP_URL || 'http://localhost:8081';
-    
+
+    const httpUrl = process.env.NEXT_PUBLIC_HTTP_URL || "http://localhost:8081";
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      
+
       try {
         // Create form data for file upload
         const formData = new FormData();
-        formData.append('file', file);
-        formData.append('roomCode', roomCode!);
-        formData.append('uploadedBy', currentUser.name);
-        
+        formData.append("file", file);
+        formData.append("roomCode", roomCode!);
+        formData.append("uploadedBy", currentUser.name);
+
         // Upload file to HTTP server
         const response = await fetch(`${httpUrl}/upload`, {
-          method: 'POST',
+          method: "POST",
           body: formData,
         });
-        
+
         if (!response.ok) {
           throw new Error(`Upload failed: ${response.statusText}`);
         }
-        
+
         const mediaFile: MediaFile = await response.json();
-        
+
         // Don't add to local state here - the WebSocket broadcast will handle it
         // This prevents duplicate entries when the server broadcasts the upload
-        
-        console.log('File uploaded successfully:', mediaFile);
-        
+
+        console.log("File uploaded successfully:", mediaFile);
       } catch (error) {
-        console.error('Error uploading file:', error);
+        console.error("Error uploading file:", error);
         // You could show a toast notification here
       }
     }
@@ -535,26 +630,30 @@ const Room = () => {
 
   const handleFileDelete = async (fileId: string) => {
     if (!roomCode) return;
-    
-    const httpUrl = process.env.NEXT_PUBLIC_HTTP_URL || 'http://localhost:8081';
-    
+
+    const httpUrl = process.env.NEXT_PUBLIC_HTTP_URL || "http://localhost:8081";
+
     try {
       const response = await fetch(`${httpUrl}/delete/${roomCode}/${fileId}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
-      
+
       if (!response.ok) {
         throw new Error(`Delete failed: ${response.statusText}`);
       }
-      
+
       // Don't remove from local state here - the WebSocket broadcast will handle it
       // This prevents issues when the server broadcasts the deletion
-      
-      console.log('File deleted successfully');
-      
+
+      console.log("File deleted successfully");
     } catch (error) {
-      console.error('Error deleting file:', error);
+      console.error("Error deleting file:", error);
     }
+  };
+
+  const showPopup = (message: string) => {
+    setPopupMessage(message);
+    setTimeout(() => setPopupMessage(null), 2000);
   };
 
   if (!isClient) return null;
@@ -565,41 +664,48 @@ const Room = () => {
   }
 
   return (
-    <div className="relative min-h-screen bg-background dark:bg-background">
-      <div className="flex justify-center">
-        <div className={`flex flex-col items-center p-1 relative z-10 w-full min-h-screen max-w-5xl bg-card dark:bg-card shadow-md transition-all duration-300 ${isModalOpen ? 'blur-sm' : ''}`}>
-          <div className="flex flex-row items-center justify-between p-2 w-full">
-            <div className="flex gap-2">
+    <div className="relative min-h-screen bg-background dark:bg-background ui-font">
+      <div 
+        className="absolute inset-0 transition-all duration-300"
+        style={{
+          left: showLeftPanel ? '320px' : '0px',
+          right: showRightPanel ? '320px' : '0px',
+        }}
+      >
+        <div
+          className={`flex flex-col items-center relative z-10 w-full h-full bg-card dark:bg-card shadow-md transition-all duration-300 ${
+            isModalOpen ? "blur-sm" : ""
+          }`}
+        >
+          <div className="flex flex-row items-center justify-between p-1 w-full">
+            <div className="flex gap-1">
               <HoverCard>
                 <HoverCardTrigger>
                   <Button
-                    className="text-foreground bg-secondary"
+                    className="text-foreground bg-secondary px-2 py-0 h-5 rounded-sm text-xs btn-micro"
                     onClick={() => {
                       navigator.clipboard.writeText(roomCode);
-                      alert("Room code copied to clipboard!");
+                      showPopup("Room code copied to clipboard!");
                     }}
                   >
                     {roomCode}
                   </Button>
                 </HoverCardTrigger>
                 <HoverCardContent className="py-1 px-2 w-auto text-popover-foreground bg-popover text-xs border-foreground">
-                  copy room code
+                  copy room code: {roomCode}
                 </HoverCardContent>
               </HoverCard>
               <HoverCard>
                 <HoverCardTrigger>
                   <Button
                     variant="default"
-                    className="bg-secondary w-10 hover:bg-secondary/80"
+                    className="text-foreground bg-secondary px-2 py-0 h-5 rounded-sm text-xs btn-micro"
                     onClick={() => {
                       navigator.clipboard.writeText(window.location.href);
-                      alert("Room link copied to clipboard!");
+                      showPopup("Room link copied to clipboard!");
                     }}
                   >
-                    <Link2
-                      size={16}
-                      className="text-foreground"
-                    />
+                    share
                   </Button>
                 </HoverCardTrigger>
                 <HoverCardContent className="py-1 px-2 w-auto text-popover-foreground bg-popover text-xs border-foreground">
@@ -609,11 +715,11 @@ const Room = () => {
               <HoverCard>
                 <HoverCardTrigger>
                   <Button
-                    className="bg-destructive w-10 hover:bg-destructive/80"
+                    className="bg-destructive px-2 py-0 h-5 text-xs rounded-sm hover:bg-destructive/80 btn-micro"
                     variant="destructive"
                     onClick={() => router.push("/")}
                   >
-                    <LogOut size={16} className="text-destructive-foreground" />
+                    exit
                   </Button>
                 </HoverCardTrigger>
                 <HoverCardContent className="py-1 px-2 w-auto text-popover-foreground bg-popover text-xs border-foreground">
@@ -621,17 +727,17 @@ const Room = () => {
                 </HoverCardContent>
               </HoverCard>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-1">
               <HoverCard>
                 <HoverCardTrigger>
                   <Button
-                    className="w-10 bg-chart-2 hover:bg-chart-2/80"
+                    className="bg-chart-2 px-2 py-0 h-5 text-xs rounded-sm hover:bg-chart-2/80 btn-micro"
                     onClick={() => {
-                      console.log('Upload button clicked');
+                      console.log("Upload button clicked");
                       fileInputRef.current?.click();
                     }}
                   >
-                    <Upload size={16} className="text-foreground" />
+                    upload
                   </Button>
                 </HoverCardTrigger>
                 <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground">
@@ -641,7 +747,7 @@ const Room = () => {
               <HoverCard>
                 <HoverCardTrigger>
                   <Button
-                    className="w-10 bg-chart-4 hover:bg-chart-4/80"
+                    className="bg-chart-4 px-2 py-0 h-5 text-xs rounded-sm hover:bg-chart-4/80 btn-micro"
                     onClick={() => {
                       const nextTheme = getNextTheme(currentThemeId);
                       setCurrentThemeId(nextTheme.id);
@@ -649,20 +755,16 @@ const Room = () => {
                       saveThemeToCookie(nextTheme.id);
                     }}
                   >
-                    {getThemeById(currentThemeId)?.type === "dark" ? (
-                      <Sun size={16} className="text-foreground" />
-                    ) : (
-                      <Moon size={16} className="text-foreground" />
-                    )}
+                    theme
                   </Button>
                 </HoverCardTrigger>
                 <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground">
-                  {getThemeById(currentThemeId)?.name || 'Switch theme'}
+                  {getThemeById(currentThemeId)?.name || "Switch theme"}
                 </HoverCardContent>
               </HoverCard>
             </div>
           </div>
-          <div className="flex-grow flex flex-col p-2 w-full">
+          <div className="flex-grow flex flex-col p-1 w-full">
             {error && status !== "Connected" && (
               <div className="mb-2 p-2 bg-destructive/10 text-destructive rounded text-sm">
                 {error}
@@ -680,7 +782,7 @@ const Room = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Hidden file input */}
       <input
         ref={fileInputRef}
@@ -692,15 +794,15 @@ const Room = () => {
           if (e.target.files) {
             handleFileUpload(e.target.files);
             // Reset the input so the same file can be selected again
-            e.target.value = '';
+            e.target.value = "";
           }
         }}
       />
-      
+
       {/* Comments Panel */}
       <CommentsPanel
-        isVisible={commentsVisibleResponsive}
-        onToggle={() => setCommentsVisible(!commentsVisible)}
+        isVisible={showRightPanel}
+        onToggle={() => setRightPanelForced(!rightPanelForced)}
         selectedLineStart={selectedLineStart}
         selectedLineEnd={selectedLineEnd}
         onCommentSelect={handleCommentSelect}
@@ -708,23 +810,38 @@ const Room = () => {
         onAddComment={handleAddComment}
         currentUser={currentUser}
       />
-      
-      {/* Left Panel (Users, Media & ECG) */}
-      {leftPanelVisible && (
-        <div className="fixed top-4 left-4 z-40">
-          <LeftPanel 
-            isVisible={leftPanelVisible} 
-            isConnected={status === "Connected"}
-              users={users}
-              mediaFiles={mediaFiles}
-              onFileUpload={handleFileUpload}
-              onFileDelete={handleFileDelete}
-              onModalStateChange={setIsModalOpen}
-            />
+
+      {/* Custom Popup */}
+      {popupMessage && (
+        <div className="fixed top-4 right-4 z-50">
+          <div className="px-3 py-2 bg-popover text-popover-foreground border border-border rounded-lg shadow-lg animate-in fade-in slide-in-from-top-2 duration-200">
+            <span className="text-sm font-medium">{popupMessage}</span>
           </div>
+        </div>
       )}
-      
-      {/* Disconnect Toast */}
+
+      {/* Overlay for mobile when panels are forced open */}
+      {!shouldShowPanels && (leftPanelForced || rightPanelForced) && (
+        <div 
+          className="fixed inset-0 bg-black/20 z-30"
+          onClick={() => {
+            setLeftPanelForced(false);
+            setRightPanelForced(false);
+          }}
+        />
+      )}
+
+      {/* Left Panel (Users, Media & ECG) */}
+      <LeftPanel
+        isVisible={showLeftPanel}
+        users={users}
+        mediaFiles={mediaFiles}
+        onFileUpload={handleFileUpload}
+        onFileDelete={handleFileDelete}
+        onModalStateChange={setIsModalOpen}
+      />
+
+      {/* Comments Panel */}
       {showDisconnectToast && (
         <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
           {/* Blurred overlay */}
@@ -733,13 +850,13 @@ const Room = () => {
           <div
             className="relative pointer-events-auto flex items-center space-x-2 px-4 py-3 rounded-lg shadow-lg border animate-in fade-in duration-300"
             style={{
-              background: 'var(--popover, var(--card, #fff))',
-              color: 'var(--popover-foreground, var(--foreground, #222))',
-              borderColor: 'var(--border, #e5e7eb)',
+              background: "var(--popover, var(--card, #fff))",
+              color: "var(--popover-foreground, var(--foreground, #222))",
+              borderColor: "var(--border, #e5e7eb)",
               borderWidth: 1,
-              borderStyle: 'solid',
+              borderStyle: "solid",
               fontWeight: 500,
-              width: 'auto',
+              width: "auto",
               minWidth: undefined,
               maxWidth: undefined,
             }}
@@ -750,7 +867,7 @@ const Room = () => {
               onClick={() => window.location.reload()}
               className="ml-2 bg-primary/10 hover:bg-primary/20 text-primary rounded p-1 transition-colors"
               title="Refresh to reconnect"
-              style={{ display: 'flex', alignItems: 'center' }}
+              style={{ display: "flex", alignItems: "center" }}
             >
               <RefreshCw size={15} />
             </button>

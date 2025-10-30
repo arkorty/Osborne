@@ -80,6 +80,7 @@ const config = {
       fontFamily: {
         "jetbrains-mono": ["JetBrains Mono", "monospace"],
         roboto: ["Roboto", "sans-serif"],
+        "bitcount-grid": ["var(--font-bitcount-grid)", "monospace"],
       },
       borderRadius: {
         lg: "var(--radius)",

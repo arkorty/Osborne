@@ -419,11 +419,11 @@ export const getNextTheme = (currentThemeId: string): ThemeConfig => {
 
 // Cookie utilities
 export const saveThemeToCookie = (themeId: string): void => {
-  document.cookie = `vscode-theme=${themeId}; path=/; max-age=${60 * 60 * 24 * 365}`; // 1 year
+  document.cookie = `theme=${themeId}; path=/; max-age=${60 * 60 * 24 * 365}`; // 1 year
 };
 
 export const getThemeFromCookie = (): string | null => {
-  const match = document.cookie.match(/(?:^|; )vscode-theme=([^;]*)/);
+  const match = document.cookie.match(/(?:^|; )theme=([^;]*)/);
   return match ? decodeURIComponent(match[1]) : null;
 };
 

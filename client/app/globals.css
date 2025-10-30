@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=Bitcount_Grid_Single&display=swap");
 
 @layer base {
   :root {
@@ -85,3 +85,127 @@
     font-family: var(--font-jetbrains-mono), monospace;
   }
 }
+
+/* Responsive panel behavior */
+@layer utilities {
+  @media (max-width: 1279px) {
+    .panel-responsive-hide {
+      transform: translateX(-100%);
+    }
+    .panel-responsive-hide.right-panel {
+      transform: translateX(100%);
+    }
+  }
+  
+  @media (min-width: 1280px) {
+    .panel-responsive-show {
+      transform: translateX(0);
+    }
+  }
+}
+
+/* Hide scrollbars but keep functionality */
+@layer utilities {
+  .hide-scrollbar {
+    /* Firefox */
+    scrollbar-width: none;
+    /* Internet Explorer and Edge */
+    -ms-overflow-style: none;
+  }
+  
+  .hide-scrollbar::-webkit-scrollbar {
+    /* WebKit browsers (Chrome, Safari, Edge) */
+    display: none;
+    width: 0;
+    height: 0;
+  }
+  
+  .hide-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .hide-scrollbar::-webkit-scrollbar-thumb {
+    background: transparent;
+  }
+  
+  /* Scroll shadows for indicating scrollable content */
+  .scroll-shadow {
+    position: relative;
+  }
+  
+  .scroll-shadow::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 12px;
+    background: linear-gradient(to bottom, 
+      hsl(var(--foreground) / 0.08), 
+      hsl(var(--foreground) / 0.04), 
+      transparent);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 10;
+  }
+  
+  .scroll-shadow::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 12px;
+    background: linear-gradient(to top, 
+      hsl(var(--foreground) / 0.08), 
+      hsl(var(--foreground) / 0.04), 
+      transparent);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 10;
+  }
+  
+  .scroll-shadow.scroll-top::before {
+    opacity: 1;
+  }
+  
+  .scroll-shadow.scroll-bottom::after {
+    opacity: 1;
+  }
+}
+
+/* Extremely small button styling */
+@layer utilities {
+  .btn-micro {
+    min-height: 20px;
+    line-height: 1;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .ui-font {
+    font-family: var(--font-bitcount-grid, "Bitcount Grid Single", monospace);
+    font-size: 1.1rem;
+  }
+  
+  .otp-input {
+    background-color: var(--card);
+    color: var(--card-foreground);
+    border-color: var(--border);
+    font-family: var(--font-bitcount-grid, "Bitcount Grid Single", monospace);
+    font-size: 1.2rem;
+    font-weight: 500;
+  }
+  
+  .otp-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary);
+    outline: none;
+  }
+}
+
+
