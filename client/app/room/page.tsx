@@ -573,7 +573,7 @@ const Room = () => {
               <HoverCard>
                 <HoverCardTrigger>
                   <Button
-                    className="text-sm text-foreground dark:text-background bg-chart-1 hover:bg-chart-1/80 font-bold"
+                    className="text-foreground bg-secondary"
                     onClick={() => {
                       navigator.clipboard.writeText(roomCode);
                       alert("Room code copied to clipboard!");
@@ -590,7 +590,7 @@ const Room = () => {
                 <HoverCardTrigger>
                   <Button
                     variant="default"
-                    className="bg-primary w-10 hover:bg-primary/80 p-1"
+                    className="bg-secondary w-10 hover:bg-secondary/80"
                     onClick={() => {
                       navigator.clipboard.writeText(window.location.href);
                       alert("Room link copied to clipboard!");
@@ -598,7 +598,7 @@ const Room = () => {
                   >
                     <Link2
                       size={16}
-                      className="text-foreground dark:text-background"
+                      className="text-foreground"
                     />
                   </Button>
                 </HoverCardTrigger>
@@ -609,7 +609,7 @@ const Room = () => {
               <HoverCard>
                 <HoverCardTrigger>
                   <Button
-                    className="bg-destructive w-10 hover:bg-destructive/80 p-1"
+                    className="bg-destructive w-10 hover:bg-destructive/80"
                     variant="destructive"
                     onClick={() => router.push("/")}
                   >
@@ -625,13 +625,13 @@ const Room = () => {
               <HoverCard>
                 <HoverCardTrigger>
                   <Button
-                    className="text-sm w-10 bg-chart-1 hover:bg-chart-1/80 dark:text-foreground font-medium"
+                    className="w-10 bg-chart-2 hover:bg-chart-2/80"
                     onClick={() => {
                       console.log('Upload button clicked');
                       fileInputRef.current?.click();
                     }}
                   >
-                    <Upload size={16} />
+                    <Upload size={16} className="text-foreground" />
                   </Button>
                 </HoverCardTrigger>
                 <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground">
@@ -641,7 +641,7 @@ const Room = () => {
               <HoverCard>
                 <HoverCardTrigger>
                   <Button
-                    className="text-sm w-10 bg-chart-3 hover:bg-chart-3/80 dark:text-foreground font-medium"
+                    className="w-10 bg-chart-4 hover:bg-chart-4/80"
                     onClick={() => {
                       const nextTheme = getNextTheme(currentThemeId);
                       setCurrentThemeId(nextTheme.id);
@@ -650,9 +650,9 @@ const Room = () => {
                     }}
                   >
                     {getThemeById(currentThemeId)?.type === "dark" ? (
-                      <Sun size={16} />
+                      <Sun size={16} className="text-foreground" />
                     ) : (
-                      <Moon size={16} />
+                      <Moon size={16} className="text-foreground" />
                     )}
                   </Button>
                 </HoverCardTrigger>
