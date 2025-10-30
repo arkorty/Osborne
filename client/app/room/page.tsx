@@ -1,0 +1,800 @@
+"use client";
+
+import { useEffect, useState, useCallback, useRef, Suspense, useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import { Link2, LogOut, Sun, Moon, Upload, WifiOff, RefreshCw } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { CommentsPanel } from "@/components/CommentsPanel";
+import { CodeEditor, CodeEditorRef } from "@/components/CodeEditor";
+import { LeftPanel } from "@/components/LeftPanel";
+import { 
+  getThemeById, 
+  getNextTheme, 
+  saveThemeToCookie, 
+  getThemeFromCookie, 
+  applyTheme 
+} from "@/lib/themes";
+import debounce from "lodash/debounce";
+import dotenv from "dotenv";
+import { JetBrains_Mono } from "next/font/google";
+import { ThemeProvider } from "next-themes";
+
+dotenv.config();
+
+const jetbrainsMono = JetBrains_Mono({
+  weight: ["400", "500", "700"],
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
+});
+
+interface TextUpdate {
+  type: "text-update";
+  content: string;
+  code: string;
+}
+
+interface InitialContent {
+  type: "initial-content";
+  content: string;
+  code: string;
+}
+
+interface JoinRoom {
+  type: "join-room";
+  code: string;
+  user?: User;
+}
+
+interface PingMessage {
+  type: "ping";
+  code: string;
+}
+
+interface PongMessage {
+  type: "pong";
+  code: string;
+}
+
+interface User {
+  id: string;
+  name: string;
+  color: string;
+  lastSeen: Date;
+  isTyping?: boolean;
+  currentLine?: number;
+}
+
+interface Comment {
+  id: string;
+  lineNumber: number | null;
+  lineRange?: string;
+  author: string;
+  authorId: string;
+  content: string;
+  timestamp: Date;
+}
+
+interface CommentMessage {
+  type: "comment-add" | "comment-update" | "comment-delete";
+  code: string;
+  comment: Comment;
+}
+
+interface CommentsSync {
+  type: "comments-sync";
+  code: string;
+  comments: Comment[];
+}
+
+interface UserMessage {
+  type: "user-joined" | "user-left";
+  code: string;
+  user: User;
+}
+
+interface UsersSync {
+  type: "users-sync";
+  code: string;
+  users: User[];
+}
+
+interface UserActivity {
+  type: "user-activity";
+  code: string;
+  userId: string;
+  isTyping: boolean;
+  currentLine?: number;
+}
+
+interface MediaFile {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  url: string;
+  uploadedAt: Date;
+  uploadedBy: string;
+}
+
+interface MediaMessage {
+  type: "media-upload" | "media-delete";
+  code: string;
+  media: MediaFile;
+}
+
+interface MediaSync {
+  type: "media-sync";
+  code: string;
+  mediaFiles: MediaFile[];
+}
+
+type Message = 
+  | TextUpdate 
+  | InitialContent 
+  | JoinRoom 
+  | PingMessage 
+  | PongMessage 
+  | CommentMessage 
+  | CommentsSync 
+  | UserMessage 
+  | UsersSync 
+  | UserActivity 
+  | MediaMessage 
+  | MediaSync;
+
+const WS_URL = `${process.env.NEXT_PUBLIC_WS_URL}`;
+
+// Utility functions
+const generateUserId = () => `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+const generateUserName = () => {
+  const adjectives = ["Red", "Blue", "Green", "Yellow", "Purple", "Orange", "Pink", "Brown"];
+  const nouns = ["Cat", "Dog", "Bird", "Fish", "Bear", "Lion", "Tiger", "Wolf"];
+  return `${adjectives[Math.floor(Math.random() * adjectives.length)]} ${nouns[Math.floor(Math.random() * nouns.length)]}`;
+};
+
+const generateUserColor = () => {
+  const colors = ["#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6", "#1abc9c", "#e67e22", "#34495e"];
+  return colors[Math.floor(Math.random() * colors.length)];
+};
+
+const Room = () => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const roomCode = searchParams.get("code");
+
+  const socketRef = useRef<WebSocket | null>(null);
+  const editorRef = useRef<CodeEditorRef>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isClient, setIsClient] = useState(false);
+  const [content, setContent] = useState("");
+  const [status, setStatus] = useState("Disconnected");
+  const [error, setError] = useState("");
+  const [commentsVisible, setCommentsVisible] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(0);
+  const [showDisconnectToast, setShowDisconnectToast] = useState(false);
+  const [currentThemeId, setCurrentThemeId] = useState('one-dark-pro');
+  const [selectedLineStart, setSelectedLineStart] = useState<number>();
+  const [selectedLineEnd, setSelectedLineEnd] = useState<number>();
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  const contentRef = useRef(content);
+
+  useEffect(() => {
+    contentRef.current = content;
+  }, [content]);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Initialize theme from cookie
+  useEffect(() => {
+    if (isClient) {
+      const savedThemeId = getThemeFromCookie();
+      if (savedThemeId) {
+        const savedTheme = getThemeById(savedThemeId);
+        if (savedTheme) {
+          setCurrentThemeId(savedThemeId);
+          applyTheme(savedTheme);
+        }
+      } else {
+        // Apply default theme
+        const defaultTheme = getThemeById('one-dark-pro');
+        if (defaultTheme) {
+          applyTheme(defaultTheme);
+        }
+      }
+    }
+  }, [isClient]);
+
+  // Apply theme when currentThemeId changes
+  useEffect(() => {
+    const currentTheme = getThemeById(currentThemeId);
+    if (currentTheme) {
+      applyTheme(currentTheme);
+    }
+  }, [currentThemeId]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+
+    // Set initial width
+    handleResize();
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Show disconnect toast only if still disconnected after a delay
+  useEffect(() => {
+    let showTimer: NodeJS.Timeout | null = null;
+    let hideTimer: NodeJS.Timeout | null = null;
+    if (status === "Disconnected") {
+      // Wait 800ms before showing toast
+      showTimer = setTimeout(() => {
+        setShowDisconnectToast(true);
+        // Auto-hide after 10 seconds
+        hideTimer = setTimeout(() => {
+          setShowDisconnectToast(false);
+        }, 10000);
+      }, 800);
+    } else {
+      setShowDisconnectToast(false);
+    }
+    return () => {
+      if (showTimer) clearTimeout(showTimer);
+      if (hideTimer) clearTimeout(hideTimer);
+    };
+  }, [status]);
+
+  // Calculate panel visibility based on viewport width
+  // Left panel (256px) + Right panel (320px) + Main content (1280px) + padding (~100px) = ~1956px
+  const shouldHidePanels = windowWidth > 0 && windowWidth < 1700;
+  const leftPanelVisible = !shouldHidePanels;
+  const commentsVisibleResponsive = commentsVisible && !shouldHidePanels;
+
+  const debouncedSend = useMemo(
+    () => debounce((ws: WebSocket, content: string, code: string) => {
+      if (ws.readyState === WebSocket.OPEN) {
+        const message: TextUpdate = {
+          type: "text-update",
+          content,
+          code,
+        };
+        ws.send(JSON.stringify(message));
+      }
+    }, 100),
+    []
+  );
+
+  const connectSocket = useCallback(() => {
+    if (!roomCode || socketRef.current?.readyState === WebSocket.OPEN) return;
+
+    if (socketRef.current) {
+      socketRef.current.close();
+    }
+
+    const ws = new WebSocket(WS_URL);
+    socketRef.current = ws;
+
+    ws.onopen = () => {
+      setStatus("Connected");
+      setError("");
+      
+      // Create user if not exists
+      const user: User = {
+        id: generateUserId(),
+        name: generateUserName(),
+        color: generateUserColor(),
+        lastSeen: new Date(),
+        isTyping: false
+      };
+      setCurrentUser(user);
+      
+      const message: JoinRoom = { 
+        type: "join-room", 
+        code: roomCode,
+        user: user
+      };
+      ws.send(JSON.stringify(message));
+    };
+
+    ws.onmessage = (event) => {
+      const message: Message = JSON.parse(event.data);
+      
+      switch (message.type) {
+        case "initial-content":
+        case "text-update":
+          if (message.content !== contentRef.current) {
+            setContent(message.content);
+          }
+          break;
+          
+        case "pong":
+          // Handle pong response
+          break;
+          
+        case "comments-sync":
+          setComments(message.comments ? message.comments.map(c => ({
+            ...c,
+            timestamp: new Date(c.timestamp)
+          })) : []);
+          break;
+          
+        case "comment-add":
+          setComments(prev => [...prev, {
+            ...message.comment,
+            timestamp: new Date(message.comment.timestamp)
+          }]);
+          break;
+          
+        case "comment-update":
+          setComments(prev => prev.map(c => 
+            c.id === message.comment.id 
+              ? { ...message.comment, timestamp: new Date(message.comment.timestamp) }
+              : c
+          ));
+          break;
+          
+        case "comment-delete":
+          setComments(prev => prev.filter(c => c.id !== message.comment.id));
+          break;
+          
+        case "users-sync":
+          setUsers(message.users ? message.users.map(u => ({
+            ...u,
+            lastSeen: new Date(u.lastSeen)
+          })) : []);
+          break;
+          
+        case "user-joined":
+          setUsers(prev => [...prev, {
+            ...message.user,
+            lastSeen: new Date(message.user.lastSeen)
+          }]);
+          break;
+          
+        case "user-left":
+          setUsers(prev => prev.filter(u => u.id !== message.user.id));
+          break;
+          
+        case "user-activity":
+          setUsers(prev => prev.map(u => 
+            u.id === message.userId 
+              ? { 
+                  ...u, 
+                  isTyping: message.isTyping, 
+                  currentLine: message.currentLine,
+                  lastSeen: new Date()
+                }
+              : u
+          ));
+          break;
+          
+        case "media-sync":
+          setMediaFiles(message.mediaFiles ? message.mediaFiles.map(m => ({
+            ...m,
+            uploadedAt: new Date(m.uploadedAt)
+          })) : []);
+          break;
+          
+        case "media-upload":
+          setMediaFiles(prev => [...prev, {
+            ...message.media,
+            uploadedAt: new Date(message.media.uploadedAt)
+          }]);
+          break;
+          
+        case "media-delete":
+          setMediaFiles(prev => prev.filter(m => m.id !== message.media.id));
+          break;
+      }
+    };
+
+    ws.onclose = () => {
+      setStatus("Disconnected");
+
+      setTimeout(() => {
+        if (socketRef.current === ws) {
+          socketRef.current = null;
+        }
+      }, 0);
+    };
+
+    ws.onerror = () => {
+      setTimeout(() => {
+        if (socketRef.current === ws) {
+          connectSocket();
+        }
+      }, 1000);
+    };
+  }, [roomCode]);
+
+  useEffect(() => {
+    if (!isClient || !roomCode) return;
+
+    connectSocket();
+
+    const pingInterval = setInterval(() => {
+      if (socketRef.current?.readyState === WebSocket.OPEN) {
+        socketRef.current.send(JSON.stringify({ type: "ping" }));
+      }
+    }, 30000);
+
+    return () => {
+      clearInterval(pingInterval);
+      if (socketRef.current) {
+        socketRef.current.close();
+        socketRef.current = null;
+      }
+      debouncedSend.cancel();
+    };
+  }, [roomCode, isClient, connectSocket, debouncedSend]);
+
+  const handleContentChange = (newContent: string) => {
+    setContent(newContent);
+
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      debouncedSend(socketRef.current, newContent, roomCode!);
+    } else if (status === "Disconnected") {
+      debouncedSend.cancel();
+      connectSocket();
+    }
+  };
+
+  const handleSelectionChange = (lineStart: number, lineEnd: number) => {
+    setSelectedLineStart(lineStart);
+    setSelectedLineEnd(lineEnd);
+  };
+
+  const handleCommentSelect = (lineNumber: number, lineRange?: string) => {
+    if (editorRef.current) {
+      if (lineRange) {
+        // Parse line range like "5-8"
+        const [start, end] = lineRange.split('-').map(n => parseInt(n.trim()));
+        editorRef.current.selectLines(start, end);
+      } else {
+        editorRef.current.selectLines(lineNumber);
+      }
+    }
+  };
+
+  const handleAddComment = (content: string, lineNumber?: number, lineRange?: string) => {
+    if (!socketRef.current || !currentUser) return;
+
+    const comment: Comment = {
+      id: '', // Will be set by server
+      lineNumber: lineNumber || null,
+      lineRange: lineRange,
+      author: currentUser.name,
+      authorId: currentUser.id,
+      content: content,
+      timestamp: new Date()
+    };
+
+    const message: CommentMessage = {
+      type: "comment-add",
+      code: roomCode!,
+      comment: comment
+    };
+
+    socketRef.current.send(JSON.stringify(message));
+  };
+
+  const handleFileUpload = async (files: FileList) => {
+    if (!files || files.length === 0 || !currentUser) return;
+    
+    const httpUrl = process.env.NEXT_PUBLIC_HTTP_URL || 'http://localhost:8081';
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      
+      try {
+        // Create form data for file upload
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('roomCode', roomCode!);
+        formData.append('uploadedBy', currentUser.name);
+        
+        // Upload file to HTTP server
+        const response = await fetch(`${httpUrl}/upload`, {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Upload failed: ${response.statusText}`);
+        }
+        
+        const mediaFile: MediaFile = await response.json();
+        
+        // Don't add to local state here - the WebSocket broadcast will handle it
+        // This prevents duplicate entries when the server broadcasts the upload
+        
+        console.log('File uploaded successfully:', mediaFile);
+        
+      } catch (error) {
+        console.error('Error uploading file:', error);
+        // You could show a toast notification here
+      }
+    }
+  };
+
+  const handleFileDelete = async (fileId: string) => {
+    if (!roomCode) return;
+    
+    const httpUrl = process.env.NEXT_PUBLIC_HTTP_URL || 'http://localhost:8081';
+    
+    try {
+      const response = await fetch(`${httpUrl}/delete/${roomCode}/${fileId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Delete failed: ${response.statusText}`);
+      }
+      
+      // Don't remove from local state here - the WebSocket broadcast will handle it
+      // This prevents issues when the server broadcasts the deletion
+      
+      console.log('File deleted successfully');
+      
+    } catch (error) {
+      console.error('Error deleting file:', error);
+    }
+  };
+
+  if (!isClient) return null;
+
+  if (!roomCode) {
+    router.push("/");
+    return null;
+  }
+
+  return (
+    <div className="relative min-h-screen bg-background dark:bg-background">
+      <div className="flex justify-center">
+        <div className={`flex flex-col items-center p-1 relative z-10 w-full min-h-screen max-w-5xl bg-card dark:bg-card shadow-md transition-all duration-300 ${isModalOpen ? 'blur-sm' : ''}`}>
+          <div className="flex flex-row items-center justify-between p-2 w-full">
+            <div className="flex gap-2">
+              <HoverCard>
+                <HoverCardTrigger>
+                  <Button
+                    className="text-sm text-foreground dark:text-background bg-chart-1 hover:bg-chart-1/80 font-bold"
+                    onClick={() => {
+                      navigator.clipboard.writeText(roomCode);
+                      alert("Room code copied to clipboard!");
+                    }}
+                  >
+                    {roomCode}
+                  </Button>
+                </HoverCardTrigger>
+                <HoverCardContent className="py-1 px-2 w-auto text-popover-foreground bg-popover text-xs border-foreground">
+                  copy room code
+                </HoverCardContent>
+              </HoverCard>
+              <HoverCard>
+                <HoverCardTrigger>
+                  <Button
+                    variant="default"
+                    className="bg-primary w-10 hover:bg-primary/80 p-1"
+                    onClick={() => {
+                      navigator.clipboard.writeText(window.location.href);
+                      alert("Room link copied to clipboard!");
+                    }}
+                  >
+                    <Link2
+                      size={16}
+                      className="text-foreground dark:text-background"
+                    />
+                  </Button>
+                </HoverCardTrigger>
+                <HoverCardContent className="py-1 px-2 w-auto text-popover-foreground bg-popover text-xs border-foreground">
+                  copy link to this page
+                </HoverCardContent>
+              </HoverCard>
+              <HoverCard>
+                <HoverCardTrigger>
+                  <Button
+                    className="bg-destructive w-10 hover:bg-destructive/80 p-1"
+                    variant="destructive"
+                    onClick={() => router.push("/")}
+                  >
+                    <LogOut size={16} className="text-destructive-foreground" />
+                  </Button>
+                </HoverCardTrigger>
+                <HoverCardContent className="py-1 px-2 w-auto text-popover-foreground bg-popover text-xs border-foreground">
+                  return to home
+                </HoverCardContent>
+              </HoverCard>
+            </div>
+            <div className="flex gap-2">
+              <HoverCard>
+                <HoverCardTrigger>
+                  <Button
+                    className="text-sm w-10 bg-chart-1 hover:bg-chart-1/80 dark:text-foreground font-medium"
+                    onClick={() => {
+                      console.log('Upload button clicked');
+                      fileInputRef.current?.click();
+                    }}
+                  >
+                    <Upload size={16} />
+                  </Button>
+                </HoverCardTrigger>
+                <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground">
+                  upload files
+                </HoverCardContent>
+              </HoverCard>
+              <HoverCard>
+                <HoverCardTrigger>
+                  <Button
+                    className="text-sm w-10 bg-chart-3 hover:bg-chart-3/80 dark:text-foreground font-medium"
+                    onClick={() => {
+                      const nextTheme = getNextTheme(currentThemeId);
+                      setCurrentThemeId(nextTheme.id);
+                      applyTheme(nextTheme);
+                      saveThemeToCookie(nextTheme.id);
+                    }}
+                  >
+                    {getThemeById(currentThemeId)?.type === "dark" ? (
+                      <Sun size={16} />
+                    ) : (
+                      <Moon size={16} />
+                    )}
+                  </Button>
+                </HoverCardTrigger>
+                <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground">
+                  {getThemeById(currentThemeId)?.name || 'Switch theme'}
+                </HoverCardContent>
+              </HoverCard>
+            </div>
+          </div>
+          <div className="flex-grow flex flex-col p-2 w-full">
+            {error && status !== "Connected" && (
+              <div className="mb-2 p-2 bg-destructive/10 text-destructive rounded text-sm">
+                {error}
+              </div>
+            )}
+            <CodeEditor
+              ref={editorRef}
+              value={content}
+              onChange={handleContentChange}
+              onSelectionChange={handleSelectionChange}
+              language="plaintext"
+              className="flex-grow w-full"
+              themeConfig={getThemeById(currentThemeId)}
+            />
+          </div>
+        </div>
+      </div>
+      
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        className="hidden"
+        accept="image/*,video/*,audio/*,.pdf,.txt,.json,.xml,.csv"
+        onChange={(e) => {
+          if (e.target.files) {
+            handleFileUpload(e.target.files);
+            // Reset the input so the same file can be selected again
+            e.target.value = '';
+          }
+        }}
+      />
+      
+      {/* Comments Panel */}
+      <CommentsPanel
+        isVisible={commentsVisibleResponsive}
+        onToggle={() => setCommentsVisible(!commentsVisible)}
+        selectedLineStart={selectedLineStart}
+        selectedLineEnd={selectedLineEnd}
+        onCommentSelect={handleCommentSelect}
+        comments={comments}
+        onAddComment={handleAddComment}
+        currentUser={currentUser}
+      />
+      
+      {/* Left Panel (Users, Media & ECG) */}
+      {leftPanelVisible && (
+        <div className="fixed top-4 left-4 z-40">
+          <LeftPanel 
+            isVisible={leftPanelVisible} 
+            isConnected={status === "Connected"}
+              users={users}
+              mediaFiles={mediaFiles}
+              onFileUpload={handleFileUpload}
+              onFileDelete={handleFileDelete}
+              onModalStateChange={setIsModalOpen}
+            />
+          </div>
+      )}
+      
+      {/* Disconnect Toast */}
+      {showDisconnectToast && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          {/* Blurred overlay */}
+          <div className="absolute inset-0 bg-background/60 backdrop-blur-sm pointer-events-auto transition-all duration-300" />
+          {/* Toast */}
+          <div
+            className="relative pointer-events-auto flex items-center space-x-2 px-4 py-3 rounded-lg shadow-lg border animate-in fade-in duration-300"
+            style={{
+              background: 'var(--popover, var(--card, #fff))',
+              color: 'var(--popover-foreground, var(--foreground, #222))',
+              borderColor: 'var(--border, #e5e7eb)',
+              borderWidth: 1,
+              borderStyle: 'solid',
+              fontWeight: 500,
+              width: 'auto',
+              minWidth: undefined,
+              maxWidth: undefined,
+            }}
+          >
+            <WifiOff size={18} className="text-destructive" />
+            <span className="text-sm font-medium">Connection Lost</span>
+            <button
+              onClick={() => window.location.reload()}
+              className="ml-2 bg-primary/10 hover:bg-primary/20 text-primary rounded p-1 transition-colors"
+              title="Refresh to reconnect"
+              style={{ display: 'flex', alignItems: 'center' }}
+            >
+              <RefreshCw size={15} />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const SkeletonMirror = () => {
+  return (
+    <div className="relative min-h-screen">
+      <div className="flex flex-col items-center p-4 relative z-10">
+        <div className="w-full max-w-6xl bg-inherit backdrop-blur-sm bg-opacity-0">
+          <div className="flex flex-row items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Skeleton className="w-[6.3rem] h-[2.25rem] rounded bg-chart-3" />
+            </div>
+            <Skeleton className="w-20 h-6 rounded bg-chart-2" />
+          </div>
+          <div>
+            <Skeleton className="w-full min-h-[80vh] p-4  bg-muted border border-border" />
+            <div className="mt-4 flex justify-end items-center">
+              <div className="flex gap-2">
+                <Skeleton className="w-10 h-10 rounded bg-chart-1" />
+                <Skeleton className="w-10 h-10 rounded bg-destructive" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const RoomWrapper = () => (
+  <ThemeProvider attribute="class" defaultTheme="dark">
+    <Suspense fallback={<SkeletonMirror />}>
+      <div className={`${jetbrainsMono.variable} font-sans`}>
+        <Room />
+      </div>
+    </Suspense>
+  </ThemeProvider>
+);
+
+export default RoomWrapper;
