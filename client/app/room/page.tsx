@@ -236,56 +236,70 @@ const Room = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Mobile swipe gesture handling
+  // Mobile swipe gesture handling & Escape key to close panels
   useEffect(() => {
-    if (!isMobile) return;
+    // Swipe gesture (mobile only)
+    if (isMobile) {
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let touchStartTime = 0;
 
-    let touchStartX = 0;
-    let touchStartY = 0;
-    let touchStartTime = 0;
+      const handleTouchStart = (e: TouchEvent) => {
+        const touch = e.touches[0];
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+        touchStartTime = Date.now();
+      };
 
-    const handleTouchStart = (e: TouchEvent) => {
-      const touch = e.touches[0];
-      touchStartX = touch.clientX;
-      touchStartY = touch.clientY;
-      touchStartTime = Date.now();
-    };
+      const handleTouchEnd = (e: TouchEvent) => {
+        const touch = e.changedTouches[0];
+        const touchEndX = touch.clientX;
+        const touchEndY = touch.clientY;
+        const touchEndTime = Date.now();
 
-    const handleTouchEnd = (e: TouchEvent) => {
-      const touch = e.changedTouches[0];
-      const touchEndX = touch.clientX;
-      const touchEndY = touch.clientY;
-      const touchEndTime = Date.now();
+        const deltaX = touchEndX - touchStartX;
+        const deltaY = touchEndY - touchStartY;
+        const deltaTime = touchEndTime - touchStartTime;
 
-      const deltaX = touchEndX - touchStartX;
-      const deltaY = touchEndY - touchStartY;
-      const deltaTime = touchEndTime - touchStartTime;
-
-      // Only consider it a swipe if:
-      // 1. The gesture is fast enough (less than 500ms)
-      // 2. The horizontal distance is significant (at least 100px)
-      // 3. The vertical distance is less than horizontal (to avoid conflicting with scrolling)
-      if (
-        deltaTime < 500 && 
-        Math.abs(deltaX) > 100 && 
-        Math.abs(deltaX) > Math.abs(deltaY)
-      ) {
-        if (deltaX < 0 && leftPanelForced) {
-          // Swipe left - close left panel
-          setLeftPanelForced(false);
-        } else if (deltaX > 0 && rightPanelForced) {
-          // Swipe right - close right panel
-          setRightPanelForced(false);
+        // Only consider it a swipe if:
+        // 1. The gesture is fast enough (less than 500ms)
+        // 2. The horizontal distance is significant (at least 100px)
+        // 3. The vertical distance is less than horizontal (to avoid conflicting with scrolling)
+        if (
+          deltaTime < 500 &&
+          Math.abs(deltaX) > 100 &&
+          Math.abs(deltaX) > Math.abs(deltaY)
+        ) {
+          if (deltaX < 0 && leftPanelForced) {
+            // Swipe left - close left panel
+            setLeftPanelForced(false);
+          } else if (deltaX > 0 && rightPanelForced) {
+            // Swipe right - close right panel
+            setRightPanelForced(false);
+          }
         }
+      };
+
+      document.addEventListener('touchstart', handleTouchStart, { passive: true });
+      document.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+      // Clean up swipe listeners
+      return () => {
+        document.removeEventListener('touchstart', handleTouchStart);
+        document.removeEventListener('touchend', handleTouchEnd);
+      };
+    }
+
+    // Escape key closes panels (all devices)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (leftPanelForced) setLeftPanelForced(false);
+        if (rightPanelForced) setRightPanelForced(false);
       }
     };
-
-    document.addEventListener('touchstart', handleTouchStart, { passive: true });
-    document.addEventListener('touchend', handleTouchEnd, { passive: true });
-
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEventListener('touchstart', handleTouchStart);
-      document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isMobile, leftPanelForced, rightPanelForced]);
 
@@ -324,19 +338,19 @@ const Room = () => {
 
   // Calculate panel visibility based on window width
   // Minimum width needed: 320px (left) + 640px (main content) + 320px (right) = 1280px
-  const shouldShowPanels = windowWidth >= 1280;
+  const showSidePanels = windowWidth >= 1280;
   
   // Auto-hide forced panels when screen size increases (do this before calculating visibility)
   useEffect(() => {
-    if (shouldShowPanels) {
+    if (showSidePanels) {
       setLeftPanelForced(false);
       setRightPanelForced(false);
     }
-  }, [shouldShowPanels]);
+  }, [showSidePanels]);
   
   // Calculate final panel visibility - when shouldShowPanels is true, always show panels regardless of forced state
-  const showLeftPanel = shouldShowPanels || (!shouldShowPanels && leftPanelForced);
-  const showRightPanel = shouldShowPanels || (!shouldShowPanels && rightPanelForced);
+  const showLeftPanel = showSidePanels || (!showSidePanels && leftPanelForced);
+  const showRightPanel = showSidePanels || (!showSidePanels && rightPanelForced);
 
   // Initialize theme from cookie
   useEffect(() => {
@@ -809,7 +823,7 @@ const Room = () => {
                     share
                   </Button>
                 </HoverCardTrigger>
-                <HoverCardContent className="py-1 px-2 w-auto text-popover-foreground bg-popover text-xs border-foreground z-50">
+                <HoverCardContent className="py-1 px-2 w-auto text-popover-foreground bg-popover text-xs border-foreground">
                   copy link to this page
                 </HoverCardContent>
               </HoverCard>
@@ -823,7 +837,7 @@ const Room = () => {
                     purge
                   </Button>
                 </HoverCardTrigger>
-                <HoverCardContent className="py-1 px-2 w-auto text-popover-foreground bg-popover text-xs border-foreground z-50">
+                <HoverCardContent className="py-1 px-2 w-auto text-popover-foreground bg-popover text-xs border-foreground">
                   permanently delete this room and all its contents
                 </HoverCardContent>
               </HoverCard>
@@ -837,7 +851,7 @@ const Room = () => {
                     exit
                   </Button>
                 </HoverCardTrigger>
-                <HoverCardContent className="py-1 px-2 w-auto text-popover-foreground bg-popover text-xs border-foreground z-50">
+                <HoverCardContent className="py-1 px-2 w-auto text-popover-foreground bg-popover text-xs border-foreground">
                   return to home
                 </HoverCardContent>
               </HoverCard>
@@ -855,7 +869,7 @@ const Room = () => {
                     upload
                   </Button>
                 </HoverCardTrigger>
-                <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground z-50">
+                <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground">
                   upload files
                 </HoverCardContent>
               </HoverCard>
@@ -873,13 +887,13 @@ const Room = () => {
                     theme
                   </Button>
                 </HoverCardTrigger>
-                <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground z-50">
+                <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground">
                   {getThemeById(currentThemeId)?.name || "Switch theme"}
                 </HoverCardContent>
               </HoverCard>
               
-              {/* Mobile Panel Controls */}
-              {isMobile && (
+              {/* Panel Controls for mobile and when panels are hidden due to width */}
+              {(isMobile || !showSidePanels) && (
                 <>
                   <HoverCard>
                     <HoverCardTrigger>
@@ -890,7 +904,7 @@ const Room = () => {
                         media
                       </Button>
                     </HoverCardTrigger>
-                    <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground z-50">
+                    <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground z-[999]">
                       toggle users & media panel
                     </HoverCardContent>
                   </HoverCard>
@@ -903,7 +917,7 @@ const Room = () => {
                         notes
                       </Button>
                     </HoverCardTrigger>
-                    <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground z-50">
+                    <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground">
                       toggle comments panel
                     </HoverCardContent>
                   </HoverCard>
@@ -983,7 +997,7 @@ const Room = () => {
       )}
 
       {/* Overlay for mobile when panels are forced open */}
-      {!shouldShowPanels && (leftPanelForced || rightPanelForced) && (
+      {!showSidePanels && (leftPanelForced || rightPanelForced) && (
         <div 
           className="fixed inset-0 bg-black/20 z-30"
           onClick={() => {

@@ -149,7 +149,7 @@ export const CodeEditor = forwardRef<CodeEditorRef, CodeEditorProps>(({
   }, [themeConfig, editorReady]);
 
   return (
-    <div className={`border border-border  overflow-hidden ${className}`}>
+    <div className={`border border-border overflow-hidden ${className}`}>
       <Editor
         height="100%"
         language={language}
