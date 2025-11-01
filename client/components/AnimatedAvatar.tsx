@@ -10,9 +10,10 @@ export const AnimatedAvatar: React.FC<AnimatedAvatarProps> = ({ className }) => 
     <div
       className={cn(
         'w-8 h-8 rounded-full',
-        'bg-gradient-to-r from-purple-400 via-pink-500 to-red-500',
+        'bg-gradient-to-r from-primary to-muted',
         'bg-[length:200%_200%]',
         'animate-gradient-flow',
+        'animate-[spin_8s_linear_infinite]',
         className
       )}
     />

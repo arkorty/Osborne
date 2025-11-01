@@ -409,6 +409,16 @@ func handleFileServe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if file exists
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		http.Error(w, "File not found", http.StatusNotFound)
+		return
+	}
+
+	// Set headers to force download
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	w.Header().Set("Content-Type", "application/octet-stream")
+
 	// Serve the file
 	http.ServeFile(w, r, filePath)
 }

@@ -22,10 +22,10 @@ import {
   RefreshCw,
   TriangleAlert,
 } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { CommentsPanel } from "@/components/RightPanel";
 import { CodeEditor, CodeEditorRef } from "@/components/Editor";
 import { LeftPanel } from "@/components/LeftPanel";
+import RecordingPopup from "@/components/RecordingPopup";
 import {
   getThemeById,
   getNextTheme,
@@ -229,6 +229,8 @@ const Room = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [fileSizeError, setFileSizeError] = useState<string | null>(null);
   const [purgeError, setPurgeError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<Array<{fileName: string; progress: number; status: 'uploading' | 'completed' | 'error'}>>([]);
+  const [isRecordingOpen, setIsRecordingOpen] = useState(false);
   
   // Detect mobile screen size
   useEffect(() => {
@@ -719,6 +721,14 @@ const Room = () => {
     const maxFileSize = 10 * 1024 * 1024; // 10MB in bytes
     const httpUrl = process.env.NEXT_PUBLIC_HTTP_URL || "http://localhost:8090";
 
+    // Initialize progress for all files
+    const initialProgress = Array.from(files).map(file => ({
+      fileName: file.name,
+      progress: 0,
+      status: 'uploading' as const
+    }));
+    setUploadProgress(initialProgress);
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
 
@@ -726,6 +736,9 @@ const Room = () => {
       if (file.size > maxFileSize) {
         const fileSizeInMB = (file.size / (1024 * 1024)).toFixed(2);
         setFileSizeError(`File "${file.name}" (${fileSizeInMB}MB) exceeds 10MB limit`);
+        setUploadProgress(prev => prev.map(p => 
+          p.fileName === file.name ? { ...p, status: 'error' as const } : p
+        ));
         continue; // Skip this file and continue with others
       }
 
@@ -736,27 +749,51 @@ const Room = () => {
         formData.append("roomCode", roomCode!);
         formData.append("uploadedBy", currentUser.name);
 
-        // Upload file to HTTP server
-        const response = await fetch(`${httpUrl}/upload`, {
-          method: "POST",
-          body: formData,
+        // Use XMLHttpRequest for progress tracking
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+
+          xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+              const progress = Math.round((e.loaded / e.total) * 100);
+              setUploadProgress(prev => prev.map(p => 
+                p.fileName === file.name ? { ...p, progress } : p
+              ));
+            }
+          });
+
+          xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              setUploadProgress(prev => prev.map(p => 
+                p.fileName === file.name ? { ...p, progress: 100, status: 'completed' as const } : p
+              ));
+              resolve();
+            } else {
+              reject(new Error(`Upload failed: ${xhr.statusText}`));
+            }
+          });
+
+          xhr.addEventListener('error', () => {
+            reject(new Error('Upload failed'));
+          });
+
+          xhr.open('POST', `${httpUrl}/upload`);
+          xhr.send(formData);
         });
 
-        if (!response.ok) {
-          throw new Error(`Upload failed: ${response.statusText}`);
-        }
-
-        const mediaFile: MediaFile = await response.json();
-
-        // Don't add to local state here - the WebSocket broadcast will handle it
-        // This prevents duplicate entries when the server broadcasts the upload
-
-        console.log("File uploaded successfully:", mediaFile);
+        console.log("File uploaded successfully:", file.name);
       } catch (error) {
         console.error("Error uploading file:", error);
-        // You could show a toast notification here
+        setUploadProgress(prev => prev.map(p => 
+          p.fileName === file.name ? { ...p, status: 'error' as const } : p
+        ));
       }
     }
+
+    // Clear progress after a delay
+    setTimeout(() => {
+      setUploadProgress([]);
+    }, 3000);
   };
 
   const handleFileDelete = async (fileId: string) => {
@@ -810,7 +847,7 @@ const Room = () => {
           }`}
         >
           <div className="flex flex-row items-center justify-between p-1 w-full">
-            <div className="flex gap-1">
+            <div className="flex gap-1 mr-1">
               <BetterHoverCard
                 trigger={
                   <Button
@@ -857,7 +894,7 @@ const Room = () => {
                 return to home
               </BetterHoverCard>
             </div>
-            <div className="flex gap-1">
+            <div className="flex gap-1 overflow-x-auto scrollbar-hide">
               <BetterHoverCard
                 trigger={
                   <Button
@@ -891,6 +928,19 @@ const Room = () => {
                 contentClassName="py-1 px-2 w-auto text-xs border-foreground"
               >
                 {`switch to ${getThemeById(getNextTheme(currentThemeId)?.id)?.name}`}
+              </BetterHoverCard>
+              <BetterHoverCard
+                trigger={
+                  <Button
+                    className="bg-red-500 px-2 py-0 h-5 text-xs rounded-sm hover:bg-red-600 btn-micro"
+                    onClick={() => setIsRecordingOpen(true)}
+                  >
+                    record
+                  </Button>
+                }
+                contentClassName="py-1 px-2 w-auto text-xs border-foreground"
+              >
+                record audio
               </BetterHoverCard>
               
               {/* Panel Controls for mobile and when panels are hidden due to width */}
@@ -1034,6 +1084,49 @@ const Room = () => {
         </div>
       )}
 
+      {/* Upload Progress Overlay */}
+      {uploadProgress.length > 0 && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="max-w-md animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <CardHeader>
+              <CardTitle className="text-lg text-center">
+                Uploading Files
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {uploadProgress.map((upload, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="truncate max-w-[200px]" title={upload.fileName}>
+                      {upload.fileName}
+                    </span>
+                    <span className={`text-xs ${
+                      upload.status === 'completed' ? 'text-green-600' :
+                      upload.status === 'error' ? 'text-destructive' :
+                      'text-muted-foreground'
+                    }`}>
+                      {upload.status === 'completed' ? '✓' :
+                       upload.status === 'error' ? '✗' :
+                       `${upload.progress}%`}
+                    </span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full transition-all duration-300 ${
+                        upload.status === 'completed' ? 'bg-green-600' :
+                        upload.status === 'error' ? 'bg-destructive' :
+                        'bg-primary'
+                      }`}
+                      style={{ width: `${upload.progress}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Custom Popup for non-critical messages */}
       {popupMessage && (
         <div className="fixed top-4 right-4 z-50">
@@ -1140,40 +1233,32 @@ const Room = () => {
 
         {/* Content Warning Modal */}
         <ContentWarningModal />
-      </div>
+
+      {/* Recording Popup */}
+      <RecordingPopup 
+        isOpen={isRecordingOpen} 
+        onClose={() => setIsRecordingOpen(false)} 
+        onFileUpload={handleFileUpload}
+      />
+    </div>
     </HoverCardProvider>
   );
 };
 
-const SkeletonMirror = () => {
-  return (
-    <div className="relative min-h-screen">
-      <div className="flex flex-col items-center p-4 relative z-10">
-        <div className="w-full max-w-6xl bg-inherit backdrop-blur-sm bg-opacity-0">
-          <div className="flex flex-row items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Skeleton className="w-[6.3rem] h-[2.25rem] rounded bg-chart-3" />
-            </div>
-            <Skeleton className="w-20 h-6 rounded bg-chart-2" />
-          </div>
-          <div>
-            <Skeleton className="w-full min-h-[80vh] p-4  bg-muted border border-border" />
-            <div className="mt-4 flex justify-end items-center">
-              <div className="flex gap-2">
-                <Skeleton className="w-10 h-10 rounded bg-chart-1" />
-                <Skeleton className="w-10 h-10 rounded bg-destructive" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+const LoadingOverlay = () => (
+  <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <Card className="max-w-xs animate-in fade-in slide-in-from-bottom-4 duration-300">
+      <CardContent className="flex flex-col items-center justify-center p-6">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      </CardContent>
+    </Card>
+  </div>
+);
 
 const RoomWrapper = () => (
   <ThemeProvider attribute="class" defaultTheme="dark">
-    <Suspense fallback={<SkeletonMirror />}>
+    <Suspense fallback={<LoadingOverlay />}>
       <div className={`${jetbrainsMono.variable} font-sans`}>
         <Room />
       </div>

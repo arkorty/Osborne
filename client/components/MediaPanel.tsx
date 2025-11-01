@@ -148,13 +148,40 @@ export const MediaPanel: React.FC<MediaPanelProps> = ({
     if (playingVideo === fileId) setPlayingVideo(null);
   };
 
-  const handleDownload = (file: MediaFile) => {
-    const link = document.createElement('a');
-    link.href = file.url;
-    link.download = file.name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownload = async (file: MediaFile) => {
+    try {
+      // Fetch the file as a blob to force download
+      const response = await fetch(file.url);
+      const blob = await response.blob();
+      
+      // Create object URL for the blob
+      const url = URL.createObjectURL(blob);
+      
+      // Create download link
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = file.name;
+      link.style.display = 'none';
+      
+      // Append to body, click, and remove
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up object URL
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      // Fallback to direct link
+      const link = document.createElement('a');
+      link.href = file.url;
+      link.download = file.name;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   if (!isVisible) {

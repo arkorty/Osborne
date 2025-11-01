@@ -6,7 +6,6 @@ import { MediaModal } from '@/components/MediaModal';
 import { AnimatedAvatar } from '@/components/AnimatedAvatar';
 import { 
   Users, 
-  Circle, 
   Upload, 
   File, 
   ImageIcon, 
@@ -268,13 +267,40 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
     if (playingAudio === fileId) setPlayingAudio(null);
   };
 
-  const handleDownload = (file: MediaFile) => {
-    const link = document.createElement('a');
-    link.href = getFileUrl(file);
-    link.download = file.name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownload = async (file: MediaFile) => {
+    try {
+      // Fetch the file as a blob to force download
+      const response = await fetch(getFileUrl(file));
+      const blob = await response.blob();
+      
+      // Create object URL for the blob
+      const url = URL.createObjectURL(blob);
+      
+      // Create download link
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = file.name;
+      link.style.display = 'none';
+      
+      // Append to body, click, and remove
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up object URL
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      // Fallback to direct link
+      const link = document.createElement('a');
+      link.href = getFileUrl(file);
+      link.download = file.name;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   return (
@@ -461,7 +487,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
             </div>
           ) : (
             activeUsers.map((user) => {
-              const { status, color } = getStatusIndicator(user);
+              const { status } = getStatusIndicator(user);
               const isCurrentUser = currentUser && user.id === currentUser.id;
               return (
                 <Card key={user.id} className="bg-background border-border">
@@ -479,11 +505,6 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                               {user.name.charAt(0).toUpperCase()}
                             </div>
                           )}
-                          <Circle
-                            size={8}
-                            className="absolute -bottom-0.5 -right-0.5 border-2 border-background rounded-full"
-                            style={{ color, fill: color }}
-                          />
                         </div>
                         <div>
                           <p className="text-sm font-medium text-foreground">
