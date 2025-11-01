@@ -254,7 +254,6 @@ const Room = () => {
   const [windowWidth, setWindowWidth] = useState(0);
   const [leftPanelForced, setLeftPanelForced] = useState(false);
   const [rightPanelForced, setRightPanelForced] = useState(false);
-  const [popupMessage, setPopupMessage] = useState<{text: string; type?: 'default' | 'warning'} | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [fileSizeError, setFileSizeError] = useState<string | null>(null);
   const [purgeError, setPurgeError] = useState<string | null>(null);
@@ -262,6 +261,7 @@ const Room = () => {
   const [isRecordingOpen, setIsRecordingOpen] = useState(false);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const [isReconnecting, setIsReconnecting] = useState(false);
+  const [gotClicked, click] = useState(false);
   
   // Detect mobile screen size
   useEffect(() => {
@@ -894,11 +894,6 @@ const Room = () => {
     }
   };
 
-  const showPopup = (message: string, type: 'default' | 'warning' = 'default') => {
-    setPopupMessage({text: message, type});
-    setTimeout(() => setPopupMessage(null), 3000);
-  };
-
   if (!isClient) return null;
 
   if (!roomCode) {
@@ -927,13 +922,18 @@ const Room = () => {
                 trigger={
                   <Button
                     variant="default"
-                    className="text-foreground bg-secondary px-2 py-0 h-5 rounded-sm text-xs btn-micro"
+                    className={`text-foreground min-w-16 px-2 py-0 h-5 rounded-sm text-xs btn-micro transition-colors duration-200 ${
+                      gotClicked 
+                        ? 'bg-warning' 
+                        : 'bg-secondary hover:bg-secondary/80'
+                    }`}
                     onClick={() => {
                       navigator.clipboard.writeText(window.location.href);
-                      showPopup("Room link copied to clipboard!");
+                      click(true);
+                      setTimeout(() => click(false), 2000);
                     }}
                   >
-                    share
+                    {gotClicked ? 'copied!' : 'share'}
                   </Button>
                 }
                 contentClassName="py-1 px-2 w-auto text-popover-foreground bg-popover text-xs border-foreground"
@@ -1007,7 +1007,7 @@ const Room = () => {
               <BetterHoverCard
                 trigger={
                   <Button
-                    className="bg-red-500 px-2 py-0 h-5 text-xs rounded-sm hover:bg-red-600 btn-micro"
+                    className="bg-red-500 px-2 py-0 h-5 text-xs rounded-sm btn-micro"
                     onClick={() => setIsRecordingOpen(true)}
                   >
                     record
@@ -1199,19 +1199,6 @@ const Room = () => {
               ))}
             </CardContent>
           </Card>
-        </div>
-      )}
-
-      {/* Custom Popup for non-critical messages */}
-      {popupMessage && (
-        <div className="fixed top-4 right-4 z-50">
-          <div className={`px-3 py-2 border rounded-lg shadow-lg animate-in fade-in slide-in-from-top-2 duration-200 ${
-            popupMessage.type === 'warning' 
-              ? 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900 dark:text-yellow-300 dark:border-yellow-700'
-              : 'bg-popover text-popover-foreground border-border'
-          }`}>
-            <span className="text-sm font-medium">{popupMessage.text}</span>
-          </div>
         </div>
       )}
 
