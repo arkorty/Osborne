@@ -9,7 +9,7 @@ export const LegalFooter = ({ onDisclaimerOpen, onDMCAOpen }: LegalFooterProps) 
   return (
     <>
       {/* Legal Notice Footer */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background/90 backdrop-blur-sm border-t border-border p-4 z-50">
+      <div className="w-full bg-background/90 backdrop-blur-sm border-t border-border p-4">
         <div className="max-w-4xl mx-auto text-center text-xs text-muted-foreground">
           <p className="mb-2">
             By using this service, you agree to our Terms of Service and acknowledge our disclaimers.

@@ -25,7 +25,7 @@ export const ContentWarningModal = () => {
 
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <Card className="max-w-md">
+      <Card className="max-w-md animate-in fade-in slide-in-from-bottom-4 duration-300">
         <CardHeader>
           <TriangleAlert className="mx-auto mb-2 text-yellow-600 dark:text-yellow-400" size={48} />
           <CardTitle className="text-center text-lg text-yellow-600 dark:text-yellow-400">Content Disclaimer</CardTitle>

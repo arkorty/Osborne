@@ -90,12 +90,12 @@ export const MediaModal: React.FC<MediaModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={onClose}
       onKeyDown={handleKeyDown}
       tabIndex={-1}
     >
-      <Card className="relative max-w-[95vw] max-h-[95vh] w-auto h-auto bg-card border-border shadow-xl flex flex-col">
+      <Card className="relative max-w-[95vw] max-h-[95vh] w-auto h-auto bg-card border-border shadow-xl flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300" onClick={(e) => e.stopPropagation()}>
         <div 
           className="relative flex flex-col h-full"
           onClick={(e) => e.stopPropagation()}

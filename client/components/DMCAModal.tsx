@@ -12,8 +12,8 @@ export const DMCAModalComponent = ({ isOpen, onClose }: DMCAModalProps) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 overflow-auto">
-      <Card className="max-w-4xl w-full max-h-[90vh] flex flex-col mx-auto my-auto">
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 overflow-auto" onClick={onClose}>
+      <Card className="max-w-4xl w-full max-h-[90vh] flex flex-col mx-auto my-auto animate-in fade-in slide-in-from-bottom-4 duration-300" onClick={(e) => e.stopPropagation()}>
         <CardHeader className="flex-shrink-0 sticky top-0 bg-card z-10 border-b">
           <CardTitle className="flex items-center justify-between">
             DMCA Copyright Policy & Takedown Notice

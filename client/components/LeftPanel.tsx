@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MediaModal } from '@/components/MediaModal';
+import { AnimatedAvatar } from '@/components/AnimatedAvatar';
 import { 
   Users, 
   Circle, 
@@ -41,6 +42,7 @@ interface LeftPanelProps {
   isVisible: boolean;
   className?: string;
   users?: ActiveUser[];
+  currentUser?: ActiveUser | null;
   mediaFiles?: MediaFile[];
   onFileUpload?: (files: FileList) => void;
   onFileDelete?: (fileId: string) => void;
@@ -50,6 +52,7 @@ interface LeftPanelProps {
 export const LeftPanel: React.FC<LeftPanelProps> = ({
   isVisible,
   users = [],
+  currentUser,
   mediaFiles = [],
   onFileDelete,
   onModalStateChange
@@ -280,115 +283,8 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
         isVisible ? 'transform-none' : '-translate-x-full'
       }`}
     >
-      {/* Users Panel */}
-      <div className="h-1/2 flex flex-col border-b border-border">
-        <div className="flex items-center justify-center py-2 border-b border-border/50 bg-muted/20">
-          <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
-            <Users size={16} />
-            Users
-          </h3>
-        </div>
-        
-        <div 
-          ref={usersScrollRef}
-          className={`flex-1 overflow-y-auto hide-scrollbar scroll-shadow p-2 space-y-2 ${
-            usersScrollState.top ? 'scroll-top' : ''
-          } ${usersScrollState.bottom ? 'scroll-bottom' : ''}`}
-        >
-          {activeUsers.length === 0 ? (
-            <div className="text-center text-muted-foreground py-4">
-              <Users size={20} className="mx-auto mb-2 opacity-50" />
-              <p className="text-xs">No active users</p>
-            </div>
-          ) : (
-            activeUsers.map((user) => {
-              const { status, color } = getStatusIndicator(user);
-              return (
-                <Card key={user.id} className="bg-background border-border">
-                  <CardContent className="p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center space-x-2">
-                        <div className="relative">
-                          <div
-                            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
-                            style={{ backgroundColor: user.color }}
-                          >
-                            {user.name.charAt(0).toUpperCase()}
-                          </div>
-                          <Circle
-                            size={8}
-                            className="absolute -bottom-0.5 -right-0.5 border-2 border-background rounded-full"
-                            style={{ color, fill: color }}
-                          />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">
-                            {user.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatLastSeen(user.lastSeen)}
-                          </p>
-                        </div>
-                      </div>
-                      <Badge 
-                        variant="outline" 
-                        className="text-xs"
-                        style={{ borderColor: user.color, color: user.color }}
-                      >
-                        {status}
-                      </Badge>
-                    </div>
-                    
-                    {user.currentLine && (
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">
-                          Line {user.currentLine}
-                        </span>
-                        {user.isTyping && (
-                          <div className="flex space-x-1">
-                            <div 
-                              className="w-1 h-1 rounded-full animate-pulse"
-                              style={{ backgroundColor: user.color }}
-                            />
-                            <div 
-                              className="w-1 h-1 rounded-full animate-pulse"
-                              style={{ 
-                                backgroundColor: user.color,
-                                animationDelay: '0.1s'
-                              }}
-                            />
-                            <div 
-                              className="w-1 h-1 rounded-full animate-pulse"
-                              style={{ 
-                                backgroundColor: user.color,
-                                animationDelay: '0.2s'
-                              }}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })
-          )}
-        </div>
-        
-        <div className="px-4 py-3 border-t border-border bg-muted/20">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>
-              {activeUsers.filter(u => getStatusIndicator(u).status === 'online').length} online
-            </span>
-            <span>
-              {activeUsers.filter(u => u.isTyping).length} typing
-            </span>
-          </div>
-        </div>
-      </div>
-
       {/* Media Panel */}
-      <div className="h-1/2 flex flex-col">
+      <div className="h-[65%] flex flex-col border-b border-border">
         <div className="flex items-center justify-center py-2 border-b border-border/50 bg-muted/20">
           <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
             <Upload size={16} />
@@ -538,6 +434,118 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
             <span>{localMediaFiles.length} files</span>
             <span>
               {formatFileSize(localMediaFiles.reduce((total, file) => total + file.size, 0))} total
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Users Panel */}
+      <div className="h-[35%] flex flex-col">
+        <div className="flex items-center justify-center py-2 border-b border-border/50 bg-muted/20">
+          <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+            <Users size={16} />
+            Users
+          </h3>
+        </div>
+        
+        <div 
+          ref={usersScrollRef}
+          className={`flex-1 overflow-y-auto hide-scrollbar scroll-shadow p-2 space-y-2 ${
+            usersScrollState.top ? 'scroll-top' : ''
+          } ${usersScrollState.bottom ? 'scroll-bottom' : ''}`}
+        >
+          {activeUsers.length === 0 ? (
+            <div className="text-center text-muted-foreground py-4">
+              <Users size={20} className="mx-auto mb-2 opacity-50" />
+              <p className="text-xs">No active users</p>
+            </div>
+          ) : (
+            activeUsers.map((user) => {
+              const { status, color } = getStatusIndicator(user);
+              const isCurrentUser = currentUser && user.id === currentUser.id;
+              return (
+                <Card key={user.id} className="bg-background border-border">
+                  <CardContent className="p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <div className="relative">
+                          {isCurrentUser ? (
+                            <AnimatedAvatar />
+                          ) : (
+                            <div
+                              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
+                              style={{ backgroundColor: user.color }}
+                            >
+                              {user.name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <Circle
+                            size={8}
+                            className="absolute -bottom-0.5 -right-0.5 border-2 border-background rounded-full"
+                            style={{ color, fill: color }}
+                          />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            {isCurrentUser ? 'You' : user.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatLastSeen(user.lastSeen)}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge 
+                        variant="outline" 
+                        className="text-xs"
+                        style={{ borderColor: user.color, color: user.color }}
+                      >
+                        {status}
+                      </Badge>
+                    </div>
+                    
+                    {user.currentLine && (
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">
+                          Line {user.currentLine}
+                        </span>
+                        {user.isTyping && (
+                          <div className="flex space-x-1">
+                            <div 
+                              className="w-1 h-1 rounded-full animate-pulse"
+                              style={{ backgroundColor: user.color }}
+                            />
+                            <div 
+                              className="w-1 h-1 rounded-full animate-pulse"
+                              style={{ 
+                                backgroundColor: user.color,
+                                animationDelay: '0.1s'
+                              }}
+                            />
+                            <div 
+                              className="w-1 h-1 rounded-full animate-pulse"
+                              style={{ 
+                                backgroundColor: user.color,
+                                animationDelay: '0.2s'
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </div>
+        
+        <div className="px-4 py-3 border-t border-border bg-muted/20">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>
+              {activeUsers.filter(u => getStatusIndicator(u).status === 'online').length} online
+            </span>
+            <span>
+              {activeUsers.filter(u => u.isTyping).length} typing
             </span>
           </div>
         </div>

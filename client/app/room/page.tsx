@@ -11,13 +11,16 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
 import {
   WifiOff,
   RefreshCw,
+  TriangleAlert,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CommentsPanel } from "@/components/RightPanel";
@@ -35,6 +38,7 @@ import dotenv from "dotenv";
 import { JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { ContentWarningModal } from "@/components/ContentWarningModal";
+import { BetterHoverCard, HoverCardProvider } from "@/components/ui/BetterHoverCard";
 
 dotenv.config();
 
@@ -210,7 +214,7 @@ const Room = () => {
   const [error, setError] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPurgeModalOpen, setIsPurgeModalOpen] = useState(false);
-  const [showDisconnectToast, setShowDisconnectToast] = useState(false);
+  const [showReconnectOverlay, setShowReconnectOverlay] = useState(false);
   const [currentThemeId, setCurrentThemeId] = useState("one-dark");
   const [selectedLineStart, setSelectedLineStart] = useState<number>();
   const [selectedLineEnd, setSelectedLineEnd] = useState<number>();
@@ -223,6 +227,8 @@ const Room = () => {
   const [rightPanelForced, setRightPanelForced] = useState(false);
   const [popupMessage, setPopupMessage] = useState<{text: string; type?: 'default' | 'warning'} | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [fileSizeError, setFileSizeError] = useState<string | null>(null);
+  const [purgeError, setPurgeError] = useState<string | null>(null);
   
   // Detect mobile screen size
   useEffect(() => {
@@ -380,25 +386,19 @@ const Room = () => {
     }
   }, [currentThemeId]);
 
-  // Show disconnect toast only if still disconnected after a delay
+  // Show reconnect overlay only if still disconnected after a delay
   useEffect(() => {
     let showTimer: NodeJS.Timeout | null = null;
-    let hideTimer: NodeJS.Timeout | null = null;
     if (status === "Disconnected") {
-      // Wait 800ms before showing toast
+      // Wait 800ms before showing overlay
       showTimer = setTimeout(() => {
-        setShowDisconnectToast(true);
-        // Auto-hide after 10 seconds
-        hideTimer = setTimeout(() => {
-          setShowDisconnectToast(false);
-        }, 10000);
+        setShowReconnectOverlay(true);
       }, 800);
     } else {
-      setShowDisconnectToast(false);
+      setShowReconnectOverlay(false);
     }
     return () => {
       if (showTimer) clearTimeout(showTimer);
-      if (hideTimer) clearTimeout(hideTimer);
     };
   }, [status]);
 
@@ -707,7 +707,7 @@ const Room = () => {
       router.push("/");
     } catch (error) {
       console.error("Error purging room:", error);
-      showPopup("Failed to purge room", "warning");
+      setPurgeError("Failed to purge room");
     }
     
     setIsPurgeModalOpen(false);
@@ -725,7 +725,7 @@ const Room = () => {
       // Check file size limit
       if (file.size > maxFileSize) {
         const fileSizeInMB = (file.size / (1024 * 1024)).toFixed(2);
-        showPopup(`File "${file.name}" (${fileSizeInMB}MB) exceeds 10MB limit`, 'warning');
+        setFileSizeError(`File "${file.name}" (${fileSizeInMB}MB) exceeds 10MB limit`);
         continue; // Skip this file and continue with others
       }
 
@@ -795,7 +795,8 @@ const Room = () => {
   }
 
   return (
-    <div className="relative min-h-screen bg-background dark:bg-background ui-font">
+    <HoverCardProvider>
+      <div className="relative min-h-screen bg-background dark:bg-background ui-font">
       <div 
         className="absolute inset-0 transition-all duration-300"
         style={{
@@ -810,8 +811,8 @@ const Room = () => {
         >
           <div className="flex flex-row items-center justify-between p-1 w-full">
             <div className="flex gap-1">
-              <HoverCard>
-                <HoverCardTrigger>
+              <BetterHoverCard
+                trigger={
                   <Button
                     variant="default"
                     className="text-foreground bg-secondary px-2 py-0 h-5 rounded-sm text-xs btn-micro"
@@ -822,13 +823,13 @@ const Room = () => {
                   >
                     share
                   </Button>
-                </HoverCardTrigger>
-                <HoverCardContent className="py-1 px-2 w-auto text-popover-foreground bg-popover text-xs border-foreground">
-                  copy link to this page
-                </HoverCardContent>
-              </HoverCard>
-              <HoverCard>
-                <HoverCardTrigger>
+                }
+                contentClassName="py-1 px-2 w-auto text-popover-foreground bg-popover text-xs border-foreground"
+              >
+                copy link to clipboard
+              </BetterHoverCard>
+              <BetterHoverCard
+                trigger={
                   <Button
                     className="bg-destructive px-2 py-0 h-5 text-xs rounded-sm hover:bg-destructive/80 btn-micro"
                     variant="destructive"
@@ -836,13 +837,13 @@ const Room = () => {
                   >
                     purge
                   </Button>
-                </HoverCardTrigger>
-                <HoverCardContent className="py-1 px-2 w-auto text-popover-foreground bg-popover text-xs border-foreground">
-                  permanently delete this room and all its contents
-                </HoverCardContent>
-              </HoverCard>
-              <HoverCard>
-                <HoverCardTrigger>
+                }
+                contentClassName="py-1 px-2 w-auto text-popover-foreground bg-popover text-xs border-foreground"
+              >
+                permanently delete this room
+              </BetterHoverCard>
+              <BetterHoverCard
+                trigger={
                   <Button
                     className="bg-destructive px-2 py-0 h-5 text-xs rounded-sm hover:bg-destructive/80 btn-micro"
                     variant="destructive"
@@ -850,15 +851,15 @@ const Room = () => {
                   >
                     exit
                   </Button>
-                </HoverCardTrigger>
-                <HoverCardContent className="py-1 px-2 w-auto text-popover-foreground bg-popover text-xs border-foreground">
-                  return to home
-                </HoverCardContent>
-              </HoverCard>
+                }
+                contentClassName="py-1 px-2 w-auto text-popover-foreground bg-popover text-xs border-foreground"
+              >
+                return to home
+              </BetterHoverCard>
             </div>
             <div className="flex gap-1">
-              <HoverCard>
-                <HoverCardTrigger>
+              <BetterHoverCard
+                trigger={
                   <Button
                     className="bg-chart-2 px-2 py-0 h-5 text-xs rounded-sm hover:bg-chart-2/80 btn-micro"
                     onClick={() => {
@@ -868,13 +869,13 @@ const Room = () => {
                   >
                     upload
                   </Button>
-                </HoverCardTrigger>
-                <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground">
-                  upload files
-                </HoverCardContent>
-              </HoverCard>
-              <HoverCard>
-                <HoverCardTrigger>
+                }
+                contentClassName="py-1 px-2 w-auto text-xs border-foreground"
+              >
+                upload files
+              </BetterHoverCard>
+              <BetterHoverCard
+                trigger={
                   <Button
                     className="bg-chart-4 px-2 py-0 h-5 text-xs rounded-sm hover:bg-chart-4/80 btn-micro"
                     onClick={() => {
@@ -886,41 +887,41 @@ const Room = () => {
                   >
                     theme
                   </Button>
-                </HoverCardTrigger>
-                <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground">
-                  {getThemeById(currentThemeId)?.name || "Switch theme"}
-                </HoverCardContent>
-              </HoverCard>
+                }
+                contentClassName="py-1 px-2 w-auto text-xs border-foreground"
+              >
+                {`switch to ${getThemeById(getNextTheme(currentThemeId)?.id)?.name}`}
+              </BetterHoverCard>
               
               {/* Panel Controls for mobile and when panels are hidden due to width */}
               {(isMobile || !showSidePanels) && (
                 <>
-                  <HoverCard>
-                    <HoverCardTrigger>
+                  <BetterHoverCard
+                    trigger={
                       <Button
                         className="bg-chart-1 px-2 py-0 h-5 text-xs rounded-sm hover:bg-chart-1/80 btn-micro"
                         onClick={() => setLeftPanelForced(!leftPanelForced)}
                       >
                         media
                       </Button>
-                    </HoverCardTrigger>
-                    <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground z-[999]">
-                      toggle users & media panel
-                    </HoverCardContent>
-                  </HoverCard>
-                  <HoverCard>
-                    <HoverCardTrigger>
+                    }
+                    contentClassName="py-1 px-2 w-auto text-xs border-foreground z-[999]"
+                  >
+                    show media
+                  </BetterHoverCard>
+                  <BetterHoverCard
+                    trigger={
                       <Button
                         className="bg-chart-3 px-2 py-0 h-5 text-xs rounded-sm hover:bg-chart-3/80 btn-micro"
                         onClick={() => setRightPanelForced(!rightPanelForced)}
                       >
                         notes
                       </Button>
-                    </HoverCardTrigger>
-                    <HoverCardContent className="py-1 px-2 w-auto text-xs border-foreground">
-                      toggle comments panel
-                    </HoverCardContent>
-                  </HoverCard>
+                    }
+                    contentClassName="py-1 px-2 w-auto text-xs border-foreground"
+                  >
+                    show comments
+                  </BetterHoverCard>
                 </>
               )}
             </div>
@@ -935,8 +936,8 @@ const Room = () => {
               <textarea
                 value={content}
                 onChange={(e) => handleContentChange(e.target.value)}
-                className="flex-grow w-full p-3 bg-background text-foreground border border-border rounded resize-none font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-                placeholder="Start typing your code here..."
+                className="flex-grow w-full p-3 bg-background text-foreground border border-border rounded resize-none font-mono text-sm focus:outline-none focus:border-primary"
+                placeholder="Start typing..."
                 style={{ fontFamily: 'JetBrains Mono, Consolas, Monaco, "Courier New", monospace' }}
               />
             ) : (
@@ -983,7 +984,57 @@ const Room = () => {
         currentUser={currentUser}
       />
 
-      {/* Custom Popup */}
+      {/* File Size Error Modal */}
+      {fileSizeError && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setFileSizeError(null)}>
+          <Card className="max-w-md text-center animate-in fade-in slide-in-from-bottom-4 duration-300" onClick={(e) => e.stopPropagation()}>
+            <CardHeader>
+              <TriangleAlert className="mx-auto mb-2 text-warning" size={48} />
+              <CardTitle className="text-lg text-warning">
+                File Too Large
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <p className="text-muted-foreground">
+                {fileSizeError}
+              </p>
+              <Button
+                onClick={() => setFileSizeError(null)}
+                className="w-full"
+              >
+                OK
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Purge Error Modal */}
+      {purgeError && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setPurgeError(null)}>
+          <Card className="max-w-md text-center animate-in fade-in slide-in-from-bottom-4 duration-300" onClick={(e) => e.stopPropagation()}>
+            <CardHeader>
+              <TriangleAlert className="mx-auto mb-2 text-destructive" size={48} />
+              <CardTitle className="text-lg text-destructive">
+                Error
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <p className="text-muted-foreground">
+                {purgeError}
+              </p>
+              <Button
+                onClick={() => setPurgeError(null)}
+                className="w-full"
+              >
+                OK
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Custom Popup for non-critical messages */}
       {popupMessage && (
         <div className="fixed top-4 right-4 z-50">
           <div className={`px-3 py-2 border rounded-lg shadow-lg animate-in fade-in slide-in-from-top-2 duration-200 ${
@@ -1011,6 +1062,7 @@ const Room = () => {
       <LeftPanel
         isVisible={isMobile ? leftPanelForced : showLeftPanel}
         users={users}
+        currentUser={currentUser}
         mediaFiles={mediaFiles}
         onFileUpload={handleFileUpload}
         onFileDelete={handleFileDelete}
@@ -1019,27 +1071,25 @@ const Room = () => {
 
       {/* Purge Confirmation Modal */}
       {isPurgeModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* Blurred overlay */}
-          <div 
-            className="absolute inset-0 bg-background/60 backdrop-blur-sm transition-all duration-300"
-            onClick={() => setIsPurgeModalOpen(false)}
-          />
-          {/* Modal */}
-          <div className="relative bg-card border border-border rounded-lg shadow-lg p-6 max-w-md w-full mx-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <h2 className="text-lg font-semibold text-foreground mb-4">Purge Room</h2>
-            <p className="text-sm text-muted-foreground mb-6">
-              Are you sure you want to permanently delete this room and all its contents? 
-              This action cannot be undone and will remove:
-            </p>
-            <ul className="text-sm text-muted-foreground mb-6 list-disc list-inside space-y-1">
-              <li>All code content</li>
-              <li>All comments</li>
-              <li>All uploaded files</li>
-              <li>Room history</li>
-            </ul>
-            <div className="flex gap-3 justify-end">
-              <Button
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setIsPurgeModalOpen(false)}>
+          <Card className="max-w-md animate-in fade-in slide-in-from-bottom-4 duration-300" onClick={(e) => e.stopPropagation()}>
+            <CardHeader>
+              <CardTitle>Purge Room</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                Are you sure you want to permanently delete this room and all its contents? 
+                This action cannot be undone and will remove:
+              </p>
+              <ul className="text-sm text-muted-foreground mb-4 list-disc list-inside space-y-1">
+                <li>All code content</li>
+                <li>All comments</li>
+                <li>All uploaded files</li>
+                <li>Room history</li>
+              </ul>
+            </CardContent>
+            <CardFooter className="flex gap-3 justify-end">
+               <Button
                 variant="outline"
                 onClick={() => setIsPurgeModalOpen(false)}
                 className="text-sm text-foreground"
@@ -1053,42 +1103,35 @@ const Room = () => {
               >
                 Purge Room
               </Button>
-            </div>
-          </div>
+            </CardFooter>
+          </Card>
         </div>
       )}
 
-      {/* Comments Panel */}
-      {showDisconnectToast && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-          {/* Blurred overlay */}
-          <div className="absolute inset-0 bg-background/60 backdrop-blur-sm pointer-events-auto transition-all duration-300" />
-          {/* Toast */}
-          <div
-            className="relative pointer-events-auto flex items-center space-x-2 px-4 py-3 rounded-lg shadow-lg border animate-in fade-in duration-300"
-            style={{
-              background: "var(--popover, var(--card, #fff))",
-              color: "var(--popover-foreground, var(--foreground, #222))",
-              borderColor: "var(--border, #e5e7eb)",
-              borderWidth: 1,
-              borderStyle: "solid",
-              fontWeight: 500,
-              width: "auto",
-              minWidth: undefined,
-              maxWidth: undefined,
-            }}
-          >
-            <WifiOff size={18} className="text-destructive" />
-            <span className="text-sm font-medium">Connection Lost</span>
-            <button
-              onClick={() => window.location.reload()}
-              className="ml-2 bg-primary/10 hover:bg-primary/20 text-primary rounded p-1 transition-colors"
-              title="Refresh to reconnect"
-              style={{ display: "flex", alignItems: "center" }}
-            >
-              <RefreshCw size={15} />
-            </button>
-          </div>
+      {/* Reconnect Overlay */}
+      {showReconnectOverlay && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="max-w-md text-center animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <CardHeader>
+              <WifiOff className="mx-auto mb-2 text-destructive" size={48} />
+              <CardTitle className="text-lg text-destructive">
+                Connection Lost
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <p className="text-muted-foreground">
+                The connection to the server was lost. Please check your
+                internet connection and try to reconnect.
+              </p>
+              <Button
+                onClick={() => window.location.reload()}
+                className="w-full"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Reconnect
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -1097,7 +1140,8 @@ const Room = () => {
 
         {/* Content Warning Modal */}
         <ContentWarningModal />
-    </div>
+      </div>
+    </HoverCardProvider>
   );
 };
 
