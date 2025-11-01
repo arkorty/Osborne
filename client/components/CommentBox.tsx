@@ -152,7 +152,7 @@ export const CommentsPanel: React.FC<CommentsPageProps> = ({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1">
                       <span className="text-xs font-medium text-foreground">
-                        {comment.author}
+                        {currentUser && comment.authorId === currentUser.id ? 'You' : comment.author}
                       </span>
                       {comment.lineNumber !== null && (
                         <Badge 

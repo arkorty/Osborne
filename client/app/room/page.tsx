@@ -208,6 +208,7 @@ const Room = () => {
   const socketRef = useRef<WebSocket | null>(null);
   const editorRef = useRef<CodeEditorRef>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const currentUserRef = useRef<User | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [content, setContent] = useState("");
   const [status, setStatus] = useState("Disconnected");
@@ -316,6 +317,10 @@ const Room = () => {
   useEffect(() => {
     contentRef.current = content;
   }, [content]);
+
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
 
   useEffect(() => {
     setIsClient(true);
@@ -604,7 +609,19 @@ const Room = () => {
 
     const pingInterval = setInterval(() => {
       if (socketRef.current?.readyState === WebSocket.OPEN) {
-        socketRef.current.send(JSON.stringify({ type: "ping" }));
+        socketRef.current.send(JSON.stringify({ type: "ping", code: roomCode }));
+        
+        // Also send user activity update to keep status current
+        if (currentUserRef.current) {
+          const activityMessage: UserActivity = {
+            type: "user-activity",
+            code: roomCode,
+            userId: currentUserRef.current.id,
+            isTyping: false,
+            currentLine: undefined
+          };
+          socketRef.current.send(JSON.stringify(activityMessage));
+        }
       }
     }, 30000);
 

@@ -23,12 +23,22 @@ interface MediaFile {
   uploadedBy: string;
 }
 
+interface User {
+  id: string;
+  name: string;
+  color: string;
+  lastSeen: Date;
+  isTyping?: boolean;
+  currentLine?: number;
+}
+
 interface MediaModalProps {
   file: MediaFile | null;
   isOpen: boolean;
   onClose: () => void;
   onDelete?: (fileId: string) => void;
   getFileUrl: (file: MediaFile) => string;
+  currentUser?: User | null;
 }
 
 export const MediaModal: React.FC<MediaModalProps> = ({
@@ -36,7 +46,8 @@ export const MediaModal: React.FC<MediaModalProps> = ({
   isOpen,
   onClose,
   onDelete,
-  getFileUrl
+  getFileUrl,
+  currentUser
 }) => {
   if (!isOpen || !file) return null;
 
@@ -169,7 +180,7 @@ export const MediaModal: React.FC<MediaModalProps> = ({
                   {file.type.split('/')[1] || 'file'}
                 </Badge>
                 <span className="text-sm text-muted-foreground">
-                  Uploaded by {file.uploadedBy}
+                  Uploaded by {currentUser && file.uploadedBy === currentUser.name ? 'You' : file.uploadedBy}
                 </span>
               </div>
               <div className="flex space-x-2">

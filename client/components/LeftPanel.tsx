@@ -60,6 +60,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   const [localMediaFiles, setLocalMediaFiles] = useState<MediaFile[]>(mediaFiles);
   const [usersScrollState, setUsersScrollState] = useState({ top: false, bottom: false });
   const [mediaScrollState, setMediaScrollState] = useState({ top: false, bottom: false });
+  const [statusUpdateTrigger, setStatusUpdateTrigger] = useState(0);
   
   const usersScrollRef = useRef<HTMLDivElement>(null);
   const mediaScrollRef = useRef<HTMLDivElement>(null);
@@ -68,6 +69,20 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   useEffect(() => {
     setActiveUsers(users);
   }, [users]);
+  
+  // Update user statuses periodically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setStatusUpdateTrigger(prev => prev + 1);
+    }, 5000); // Update every 5 seconds to be more responsive
+    
+    return () => clearInterval(interval);
+  }, []);
+  
+  // Force re-render when status should be updated (dependency on statusUpdateTrigger)
+  useEffect(() => {
+    // This effect doesn't need to do anything, just triggers re-render
+  }, [statusUpdateTrigger]);
   
   // Scroll detection function
   const handleScroll = (element: HTMLDivElement | null, setState: (state: { top: boolean; bottom: boolean }) => void) => {
@@ -579,6 +594,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
         onClose={() => handleModalChange(null)}
         onDelete={onFileDelete}
         getFileUrl={getFileUrl}
+        currentUser={currentUser}
       />
     </div>
   );
