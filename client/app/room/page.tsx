@@ -737,7 +737,7 @@ const Room = () => {
         formData.append("uploadedBy", currentUser.name);
 
         // Upload file to HTTP server
-        const response = await fetch(`${httpUrl}/o/upload`, {
+        const response = await fetch(`${httpUrl}/upload`, {
           method: "POST",
           body: formData,
         });
@@ -765,7 +765,7 @@ const Room = () => {
     const httpUrl = process.env.NEXT_PUBLIC_HTTP_URL || "http://localhost:8090";
 
     try {
-      const response = await fetch(`${httpUrl}/o/delete/${roomCode}/${fileId}`, {
+      const response = await fetch(`${httpUrl}/delete/${roomCode}/${fileId}`, {
         method: "DELETE",
       });
 
