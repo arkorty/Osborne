@@ -12,7 +12,7 @@ export const LegalFooter = ({ onDisclaimerOpen, onDMCAOpen }: LegalFooterProps) 
       <div className="w-full bg-background/90 backdrop-blur-sm border-t border-border p-4">
         <div className="max-w-4xl mx-auto text-center text-xs text-muted-foreground">
           <p className="mb-2">
-            By using this service, you agree to our Terms of Service and acknowledge our disclaimers.
+            By using this service, you agree to our Terms of Service.
             User uploaded content is not monitored or endorsed by us.
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
