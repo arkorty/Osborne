@@ -4,20 +4,21 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TriangleAlert } from "lucide-react";
+import { getCookie, setCookie } from "@/lib/cookies";
 
 export const ContentWarningModal = () => {
   const [showWarning, setShowWarning] = useState(false);
 
   useEffect(() => {
     // Check if user has already acknowledged the warning
-    const hasAcknowledged = localStorage.getItem('content-warning-acknowledged');
+    const hasAcknowledged = getCookie('osborne-cwa') === 'true';
     if (!hasAcknowledged) {
       setShowWarning(true);
     }
   }, []);
 
   const handleAcknowledge = () => {
-    localStorage.setItem('content-warning-acknowledged', 'true');
+    setCookie('osborne-cwa', 'true', 365); // 1 year
     setShowWarning(false);
   };
 

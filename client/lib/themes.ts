@@ -377,11 +377,11 @@ export const getNextTheme = (currentThemeId: string): ThemeConfig => {
 
 // Cookie utilities
 export const saveThemeToCookie = (themeId: string): void => {
-  document.cookie = `theme=${themeId}; path=/; max-age=${60 * 60 * 24 * 365}`; // 1 year
+  document.cookie = `osborne-theme=${themeId}; path=/; max-age=${60 * 60 * 24 * 365}`; // 1 year
 };
 
 export const getThemeFromCookie = (): string | null => {
-  const match = document.cookie.match(/(?:^|; )theme=([^;]*)/);
+  const match = document.cookie.match(/(?:^|; )osborne-theme=([^;]*)/);
   return match ? decodeURIComponent(match[1]) : null;
 };
 

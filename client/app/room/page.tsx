@@ -39,6 +39,7 @@ import { JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { ContentWarningModal } from "@/components/ContentWarningModal";
 import { BetterHoverCard, HoverCardProvider } from "@/components/ui/BetterHoverCard";
+import { getCookie, setCookie } from "@/lib/cookies";
 
 dotenv.config();
 
@@ -200,6 +201,33 @@ const generateUserColor = () => {
   return colors[Math.floor(Math.random() * colors.length)];
 };
 
+// User persistence helpers using cookies
+const restoreUser = (): User | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const stored = getCookie("osborne-user");
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return {
+        ...parsed,
+        lastSeen: new Date(parsed.lastSeen),
+      };
+    }
+  } catch (error) {
+    console.error('Error loading user from storage:', error);
+  }
+  return null;
+};
+
+const saveUser = (user: User) => {
+  if (typeof window === 'undefined') return;
+  try {
+    setCookie("osborne-user", JSON.stringify(user), 30); // 30 days
+  } catch (error) {
+    console.error('Error saving user to storage:', error);
+  }
+};
+
 const Room = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -232,6 +260,8 @@ const Room = () => {
   const [purgeError, setPurgeError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<Array<{fileName: string; progress: number; status: 'uploading' | 'completed' | 'error'}>>([]);
   const [isRecordingOpen, setIsRecordingOpen] = useState(false);
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
+  const [isReconnecting, setIsReconnecting] = useState(false);
   
   // Detect mobile screen size
   useEffect(() => {
@@ -325,6 +355,14 @@ const Room = () => {
   useEffect(() => {
     setIsClient(true);
     
+    // Load user from storage if available
+    if (roomCode) {
+      const storedUser = restoreUser();
+      if (storedUser) {
+        setCurrentUser(storedUser);
+      }
+    }
+    
     // Set initial window width
     const handleResize = () => {
       const newWidth = window.innerWidth;
@@ -347,7 +385,7 @@ const Room = () => {
     return () => {
       window.removeEventListener('resize', handleResize);
     };
-  }, []);
+  }, [roomCode]);
 
   // Calculate panel visibility based on window width
   // Minimum width needed: 320px (left) + 640px (main content) + 320px (right) = 1280px
@@ -440,16 +478,31 @@ const Room = () => {
     ws.onopen = () => {
       setStatus("Connected");
       setError("");
+      setIsReconnecting(false);
+      setReconnectAttempts(0); // Reset on successful connection
 
-      // Create user if not exists
-      const user: User = {
-        id: generateUserId(),
-        name: generateUserName(),
-        color: generateUserColor(),
-        lastSeen: new Date(),
-        isTyping: false,
-      };
+      // Use existing user, check storage, or create new one
+      let user = currentUserRef.current;
+      if (!user && roomCode) {
+        user = restoreUser();
+      }
+      if (!user) {
+        user = {
+          id: generateUserId(),
+          name: generateUserName(),
+          color: generateUserColor(),
+          lastSeen: new Date(),
+          isTyping: false,
+        };
+      }
+      
+      // Update lastSeen for reconnection
+      user.lastSeen = new Date();
+      
       setCurrentUser(user);
+      
+      // Save to storage for persistence across sessions
+      saveUser(user);
 
       const message: JoinRoom = {
         type: "join-room",
@@ -585,6 +638,7 @@ const Room = () => {
 
     ws.onclose = () => {
       setStatus("Disconnected");
+      setIsReconnecting(false);
 
       setTimeout(() => {
         if (socketRef.current === ws) {
@@ -594,13 +648,17 @@ const Room = () => {
     };
 
     ws.onerror = () => {
+      setIsReconnecting(true);
+      const backoffDelay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000); // Max 10 seconds
+      
       setTimeout(() => {
         if (socketRef.current === ws) {
+          setReconnectAttempts(prev => prev + 1);
           connectSocket();
         }
-      }, 1000);
+      }, backoffDelay);
     };
-  }, [roomCode]);
+  }, [roomCode, reconnectAttempts]);
 
   useEffect(() => {
     if (!isClient || !roomCode) return;
@@ -850,7 +908,7 @@ const Room = () => {
 
   return (
     <HoverCardProvider>
-      <div className="relative min-h-screen bg-background dark:bg-background ui-font">
+      <div className="relative min-h-dvh bg-background dark:bg-background ui-font">
       <div 
         className="absolute inset-0 transition-all duration-300"
         style={{
@@ -1230,16 +1288,33 @@ const Room = () => {
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
               <p className="text-muted-foreground">
-                The connection to the server was lost. Please check your
-                internet connection and try to reconnect.
+                {isReconnecting 
+                  ? `Attempting to reconnect... (Attempt ${reconnectAttempts + 1})`
+                  : "The connection to the server was lost. Please check your internet connection and try to reconnect."
+                }
               </p>
               <Button
-                onClick={() => window.location.reload()}
+                onClick={() => {
+                  setShowReconnectOverlay(false);
+                  setReconnectAttempts(0);
+                  setIsReconnecting(false);
+                  connectSocket();
+                }}
                 className="w-full"
+                disabled={isReconnecting}
               >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Reconnect
+                <RefreshCw className={`mr-2 h-4 w-4 ${isReconnecting ? 'animate-spin' : ''}`} />
+                {isReconnecting ? 'Reconnecting...' : 'Reconnect'}
               </Button>
+              {reconnectAttempts > 3 && (
+                <Button
+                  onClick={() => window.location.reload()}
+                  variant="outline"
+                  className="w-full"
+                >
+                  Force Reload
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>
