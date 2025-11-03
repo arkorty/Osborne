@@ -1310,9 +1310,6 @@ const Room = () => {
       {/* Content Warning Modal */}
       <ContentWarningModal />
 
-        {/* Content Warning Modal */}
-        <ContentWarningModal />
-
       {/* Recording Popup */}
       <RecordingPopup 
         isOpen={isRecordingOpen} 
