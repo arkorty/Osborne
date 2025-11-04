@@ -228,6 +228,8 @@ const saveUser = (user: User) => {
   }
 };
 
+let filesCopy: Array<File>;
+
 const Room = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -257,7 +259,7 @@ const Room = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [fileSizeError, setFileSizeError] = useState<string | null>(null);
   const [purgeError, setPurgeError] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<Array<{fileName: string; progress: number; status: 'uploading' | 'completed' | 'error'}>>([]);
+  const [uploadProgress, setUploadProgress] = useState<Array<{id: string; fileName: string; progress: number; status: 'uploading' | 'completed' | 'error'}>>([]);
   const [isRecordingOpen, setIsRecordingOpen] = useState(false);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const [isReconnecting, setIsReconnecting] = useState(false);
@@ -798,21 +800,23 @@ const Room = () => {
 
     // Initialize progress for all files
     const initialProgress = Array.from(files).map(file => ({
+      id: `${file.name}-${Date.now()}-${Math.random()}`,
       fileName: file.name,
       progress: 0,
       status: 'uploading' as const
     }));
-    setUploadProgress(initialProgress);
+    setUploadProgress(prev => [...prev, ...initialProgress]);
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
+      const uploadId = initialProgress[i].id;
 
       // Check file size limit
       if (file.size > maxFileSize) {
         const fileSizeInMB = (file.size / (1024 * 1024)).toFixed(2);
         setFileSizeError(`File "${file.name}" (${fileSizeInMB}MB) exceeds 10MB limit`);
         setUploadProgress(prev => prev.map(p => 
-          p.fileName === file.name ? { ...p, status: 'error' as const } : p
+          p.id === uploadId ? { ...p, status: 'error' as const } : p
         ));
         continue; // Skip this file and continue with others
       }
@@ -832,7 +836,7 @@ const Room = () => {
             if (e.lengthComputable) {
               const progress = Math.round((e.loaded / e.total) * 100);
               setUploadProgress(prev => prev.map(p => 
-                p.fileName === file.name ? { ...p, progress } : p
+                p.id === uploadId ? { ...p, progress } : p
               ));
             }
           });
@@ -840,7 +844,7 @@ const Room = () => {
           xhr.addEventListener('load', () => {
             if (xhr.status >= 200 && xhr.status < 300) {
               setUploadProgress(prev => prev.map(p => 
-                p.fileName === file.name ? { ...p, progress: 100, status: 'completed' as const } : p
+                p.id === uploadId ? { ...p, progress: 100, status: 'completed' as const } : p
               ));
               resolve();
             } else {
@@ -860,15 +864,16 @@ const Room = () => {
       } catch (error) {
         console.error("Error uploading file:", error);
         setUploadProgress(prev => prev.map(p => 
-          p.fileName === file.name ? { ...p, status: 'error' as const } : p
+          p.id === uploadId ? { ...p, status: 'error' as const } : p
         ));
       }
     }
 
-    // Clear progress after a delay
+    // Remove completed files from this batch after a delay
+    const uploadIds = initialProgress.map(p => p.id);
     setTimeout(() => {
-      setUploadProgress([]);
-    }, 3000);
+      setUploadProgress(prev => prev.filter(p => !uploadIds.includes(p.id)));
+    }, 2000);
   };
 
   const handleFileDelete = async (fileId: string) => {
@@ -1089,7 +1094,12 @@ const Room = () => {
         accept="image/*,video/*,audio/*,.pdf,.txt,.json,.xml,.csv"
         onChange={(e) => {
           if (e.target.files) {
-            handleFileUpload(e.target.files);
+            // Copy the FileList to prevent it from being cleared when input is reset
+            filesCopy = Array.from(e.target.files);
+            const dataTransfer = new DataTransfer();
+            filesCopy.forEach(file => dataTransfer.items.add(file));
+            
+            handleFileUpload(dataTransfer.files);
             // Reset the input so the same file can be selected again
             e.target.value = "";
           }
@@ -1165,7 +1175,9 @@ const Room = () => {
           <Card className="max-w-md animate-in fade-in slide-in-from-bottom-4 duration-300">
             <CardHeader>
               <CardTitle className="text-lg text-center">
-                Uploading Files
+                {filesCopy && filesCopy.length > 1
+                  ? 'Uploading Files'
+                  : 'Uploading File'}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
